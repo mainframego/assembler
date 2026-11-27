@@ -1,0 +1,1138 @@
+»
+                                         High Level Assembler Option Summary                   (PTF UO07449)   Page    1
+                                                                                            HLASM R6.0  2026/11/27 06.34
+  No Overriding ASMAOPT Parameters
+  Overriding Parameters-  OBJECT,NODECK,XREF(SHORT)
+  No Process Statements
+
+
+  Options for this Assembly
+                    NOADATA
+                      ALIGN
+                    NOASA
+                      ASCII(00819)
+                      BATCH
+                      CA(LOCAL)
+                      CE(LOCAL)
+                      CODEPAGE(01148)
+                    NOCOMPAT
+                      CU(LOCAL)
+                    NODATAMAP
+                    NODBCS
+3 PARM/OPTION       NODECK
+                      DXREF
+                      EBCDIC(00037)
+                      ESD
+                    NOEXIT
+                      FAIL(NOMSG,NOMNOTE,MAXERRS(500))
+                      FLAG(0,ALIGN,CONT,EXLITW,NOIMPLEN,NOLONGER,NOPAGE0,PUSH,RECORD,RENT,NOSIGNED,NOSUBSTR,NOTRUNC,
+                           USING0)
+                    NOFOLD
+                    NOGOFF
+                      ILMA
+                    NOINFO
+                      LANGUAGE(EN)
+                    NOLIBMAC
+                      LINECOUNT(60)
+                      LIST(121)
+                      MACHINE(,NOLIST)
+                      MXREF(SOURCE)
+3 PARM/OPTION         OBJECT
+                      OPTABLE(UNI,NOLIST)
+                    NOPCONTROL
+                    NOPESTOP
+                    NOPROFILE
+                    NORA2
+                    NORENT
+                      RLD
+                      RXREF
+                      SECTALGN(8)
+                      SIZE(MAX)
+                    NOSUPRWARN
+                      SYSPARM()
+                    NOTERM
+                    NOTEST
+                      THREAD
+                    NOTRANSLATE
+                      TYPECHECK(MAGNITUDE,REGISTER,SIGNED)
+»
+                                         High Level Assembler Option Summary                   (PTF UO07449)   Page    2
+                                                                                            HLASM R6.0  2026/11/27 06.34
+                      UNICODE(01200)
+                      USING(NOLIMIT,MAP,WARN(15))
+                    NOWORKFILE
+3 PARM/OPTION         XREF(SHORT)
+
+  No Overriding DD Names
+»
+                                              External Symbol Dictionary                                       Page    3
+Symbol   Type   Id     Address  Length   Owner Id Flags Alias-of                            HLASM R6.0  2026/11/27 06.34
+COPYFB    SD 00000001 00000000 00000270             02
+»
+                                                                                                               Page    4
+  Active Usings: None
+  Loc  Object Code    Addr1 Addr2  Stmt   Source Statement                                  HLASM R6.0  2026/11/27 06.34
+                                      1 *=====================================================================
+                                      2 *
+                                      3 *  PROGRAM..: COPYFB
+                                      4 *  LANGUAGE.: HLASM - HIGH LEVEL ASSEMBLER FOR Z/OS
+                                      5 *
+                                      6 *  PURPOSE..: SEQUENTIALLY READ THE DATA SET ALLOCATED TO DDNAME
+                                      7 *             INFILE (RECFM=FB, LRECL=80) AND WRITE EVERY RECORD
+                                      8 *             READ TO THE DATA SET ALLOCATED TO DDNAME OUTFILE,
+                                      9 *             WHICH USES THE SAME DCB AS THE INPUT (RECFM=FB,
+                                     10 *             LRECL=80).
+                                     11 *
+                                     12 *  ACCESS...: QSAM (QUEUED SEQUENTIAL ACCESS METHOD), USING THE
+                                     13 *             DCB, OPEN, GET, PUT AND CLOSE MACROS IN MOVE MODE
+                                     14 *             (GM/PM).
+                                     15 *
+                                     16 *  DDNAMES..: INFILE  - INPUT DATA SET   (INPUT)
+                                     17 *             OUTFILE - OUTPUT DATA SET  (OUTPUT)
+                                     18 *
+                                     19 *  RETURN...: RC = 00 - NORMAL COMPLETION
+                                     20 *             RC = 16 - OPEN FAILED FOR INFILE OR OUTFILE
+                                     21 *
+                                     22 *  MESSAGE..: AT THE END A WTO IS ISSUED WITH THE NUMBER OF
+                                     23 *             RECORDS COPIED (SHOWN IN THE JOBLOG / JESMSGLG).
+                                     24 *
+                                     25 *  REGISTERS USED:
+                                     26 *             R2  - POINTER TO THE DCB (OPEN CHECK)
+                                     27 *             R5  - COUNTER OF RECORDS COPIED
+                                     28 *             R11 - WORK REGISTER FOR SAVE AREA CHAINING
+                                     29 *             R12 - PROGRAM BASE REGISTER
+                                     30 *             R13 - ADDRESS OF THIS PROGRAM'S SAVE AREA
+                                     31 *             R14 - RETURN ADDRESS TO THE CALLER
+                                     32 *             R15 - ENTRY POINT ADDRESS / RETURN CODE
+                                     33 *
+                                     34 *  ATTRIBUTES: AMODE 31 / RMODE 24 (QSAM DCBS MUST RESIDE BELOW
+                                     35 *             THE 16MB LINE). NOT REENTRANT (THE DCBS AND THE SAVE
+                                     36 *             AREA ARE INSIDE THE LOAD MODULE ITSELF).
+                                     37 *
+                                     38 *=====================================================================
+000000                00000 00270    39 COPYFB   CSECT                    Start of control section COPYFB
+                                     40 COPYFB   AMODE 31                 Run in 31-bit addressing mode
+                                     41 COPYFB   RMODE 24                 Load below the 16MB line
+                                     42 *
+                                     43 *---------------------------------------------------------------------
+                                     44 *  LINKAGE CONVENTION (ENTRY) - SAVE THE CALLER'S REGISTERS,
+                                     45 *  ESTABLISH THE BASE REGISTER AND CHAIN THE SAVE AREAS.
+                                     46 *---------------------------------------------------------------------
+000000 90EC D00C            0000C    47          STM   R14,R12,12(R13)    Save R14-R12 in caller's save area
+000004 18CF                          48          LR    R12,R15            R12 gets the entry point address
+                 R:C  00000          49          USING COPYFB,R12         R12 becomes the base register
+000006 41B0 C0E8            000E8    50          LA    R11,SAVEAREA       R11 points to our save area
+00000A 50D0 B004            00004    51          ST    R13,4(,R11)        Our SA points back to caller's SA
+00000E 50B0 D008            00008    52          ST    R11,8(,R13)        Caller's SA points forward to ours
+000012 18DB                          53          LR    R13,R11            R13 points to our save area
+                                     54 *
+i                                     55 *---------------------------------------------------------------------
+                                                                                                               Page    5
+  Active Usings: COPYFB,R12
+  Loc  Object Code    Addr1 Addr2  Stmt   Source Statement                                  HLASM R6.0  2026/11/27 06.34
+                                     56 *  RECORD COUNTER INITIALIZATION
+                                     57 *---------------------------------------------------------------------
+000014 1B55                          58          SR    R5,R5              Clear the record counter (R5)
+                                     59 *
+                                     60 *---------------------------------------------------------------------
+                                     61 *  OPEN THE DATA SETS
+                                     62 *  THE OPEN MACRO OPENS DCB INFILE FOR READING (INPUT) AND DCB
+                                     63 *  OUTFILE FOR WRITING (OUTPUT). ATTRIBUTES NOT CODED IN THE DCB
+                                     64 *  (E.G. BLKSIZE) ARE TAKEN FROM THE JCL OR FROM THE DATA SET LABEL.
+                                     65 *---------------------------------------------------------------------
+                                     66          OPEN  (INFILE,(INPUT),OUTFILE,(OUTPUT))
+000016 0700                          68+         CNOP  0,4                      Align list to word              01-OPEN
+000018 4D10 C024            00024    69+         BAS   1,*+12                   Load reg 1 with list address    01-OPEN
+00001C 00                            70+         DC    AL1(0)                   Option byte                     01-OPEN
+00001D 0001B0                        71+         DC    AL3(INFILE)              DCB or ACB address              01-OPEN
+000020 8F                            72+         DC    AL1(143)                 Option byte                     01-OPEN
+000021 000210                        73+         DC    AL3(OUTFILE)             DCB or ACB address              01-OPEN
+000024 0A13                          74+         SVC   19                       Issue OPEN SVC                  01-OPEN
+                                     75 *
+                                     76 *---------------------------------------------------------------------
+                                     77 *  CHECK THAT BOTH DCBS WERE ACTUALLY OPENED.
+                                     78 *  BIT DCBOFOPN OF FIELD DCBOFLGS IS TURNED ON WHEN OPEN SUCCEEDS.
+                                     79 *  THE FIELDS ARE MAPPED BY THE IHADCB DSECT (GENERATED BY THE
+                                     80 *  DCBD MACRO AT THE END OF THE PROGRAM).
+                                     81 *---------------------------------------------------------------------
+000026 4120 C1B0            001B0    82          LA    R2,INFILE          R2 gets the address of DCB INFILE
+                 R:2  00000          83          USING IHADCB,R2          Map the DCB with the IHADCB DSECT
+00002A 9110 2030      00030          84          TM    DCBOFLGS,DCBOFOPN  Test the "DCB is open" bit
+00002E 4780 C090            00090    85          BZ    OPENERR            Bit off: OPEN failed
+000032 4120 C210            00210    86          LA    R2,OUTFILE         R2 gets the address of DCB OUTFILE
+000036 9110 2030      00030          87          TM    DCBOFLGS,DCBOFOPN  Test the "DCB is open" bit
+00003A 4780 C090            00090    88          BZ    OPENERR            Bit off: OPEN failed
+                                     89          DROP  R2                 End the mapping through R2
+                                     90 *
+                                     91 *---------------------------------------------------------------------
+                                     92 *  MAIN LOOP: READ ONE RECORD FROM INFILE AND WRITE IT TO OUTFILE.
+                                     93 *  IN MOVE MODE (MACRF=GM/PM) QSAM MOVES THE RECORD INTO THE GIVEN
+                                     94 *  WORK AREA (RECORD) AND, ON PUT, FROM THE WORK AREA TO THE BUFFER.
+                                     95 *  WHEN THERE ARE NO MORE RECORDS, QSAM AUTOMATICALLY BRANCHES TO
+                                     96 *  THE ROUTINE NAMED IN THE EODAD PARAMETER OF THE DCB (EOFRTN).
+                                     97 *  NOTE: GET/PUT CHANGE R0, R1, R14 AND R15 - THAT IS WHY THE
+                                     98 *  COUNTER IS KEPT IN R5.
+                                     99 *---------------------------------------------------------------------
+00003E                              100 READLOOP DS    0H                 Start of the read loop
+                                    101          GET   INFILE,RECORD      Read the next record into RECORD
+00003E 4110 C1B0            001B0   105+         LA    1,INFILE                          LOAD PARAMETER REG 1   02-IHBIN
+000042 4100 C138            00138   106+         LA    0,RECORD                          LOAD PARAMETER REG 0   02-IHBIN
+000046 1FFF                         107+         SLR   15,15                    CLEAR REGISTER             @L1A 01-GET
+000048 BFF7 1031            00031   108+         ICM   15,7,49(1)               LOAD GET ROUTINE ADDR      @L1C 01-GET
+00004C 0DEF                         109+         BASR  14,15                    LINK TO GET ROUTINE        @L3C 01-GET
+00004E A75A 0001                    110          AHI   R5,1               Add 1 to the record counter
+                                    111          PUT   OUTFILE,RECORD     Write the contents of RECORD
+000052 4110 C210            00210   115+         LA    1,OUTFILE                         LOAD PARAMETER REG 1   02-IHBIN
+000056 4100 C138            00138   116+         LA    0,RECORD                          LOAD PARAMETER REG 0   02-IHBIN
+i00005A 1FFF                         117+         SLR   15,15               CLEAR REGISTER FOR ICM          @L1A 01-PUT
+                                                                                                               Page    6
+  Active Usings: COPYFB,R12
+  Loc  Object Code    Addr1 Addr2  Stmt   Source Statement                                  HLASM R6.0  2026/11/27 06.34
+00005C BFF7 1031            00031   118+         ICM   15,7,49(1)          LOAD PUT ROUTINE ADDRESS        @L1C 01-PUT
+000060 0DEF                         119+         BASR  14,15               LINK TO PUT ROUTINE             @L3C 01-PUT
+000062 47F0 C03E            0003E   120          B     READLOOP           Go back and read the next record
+                                    121 *
+                                    122 *---------------------------------------------------------------------
+                                    123 *  END OF FILE (EODAD): CLOSE THE DATA SETS, DISPLAY THE NUMBER OF
+                                    124 *  RECORDS COPIED AND END WITH RC=0.
+                                    125 *---------------------------------------------------------------------
+000066                              126 EOFRTN   DS    0H                 QSAM branches here at end of INFILE
+                                    127          CLOSE (INFILE,,OUTFILE)  Close both (flushes last buffer)
+000066 0700                         129+         CNOP  0,4                      ALIGN LIST TO FULLWORD          01-CLOSE
+000068 4D10 C074            00074   130+         BAS   1,*+12                   LOAD REG1 W/LIST ADDR           01-CLOSE
+00006C 00                           131+         DC    AL1(0)                   OPTION BYTE                     01-CLOSE
+00006D 0001B0                       132+         DC    AL3(INFILE)              DCB OR ACB ADDRESS              01-CLOSE
+000070 80                           133+         DC    AL1(128)                 OPTION BYTE                     01-CLOSE
+000071 000210                       134+         DC    AL3(OUTFILE)             DCB OR ACB ADDRESS              01-CLOSE
+000074 0A14                         135+         SVC   20                       ISSUE CLOSE SVC                 01-CLOSE
+000076 4E50 C130            00130   136          CVD   R5,DWORK           Convert counter to packed decimal
+00007A F387 C1A5 C130 001A5 00130   137          UNPK  WTOCNT,DWORK       Unpack to zoned decimal (9 digits)
+000080 96F0 C1AD      001AD         138          OI    WTOCNT+L'WTOCNT-1,X'F0'  Fix the sign of the last digit
+                                    139          WTO   MF=(E,WTOMSG)      Display the message with the total
+000084 4110 C188            00188   143+         LA    1,WTOMSG                          LOAD PARAMETER REG 1   02-IHBIN
+000088 0A23                         144+         SVC   35                       ISSUE SVC 35               @L6A 01-WTO
+00008A 1BFF                         145          SR    R15,R15            Return code = 0 (success)
+00008C 47F0 C0D8            000D8   146          B     EXITPGM            Branch to the exit routine
+                                    147 *
+                                    148 *---------------------------------------------------------------------
+                                    149 *  OPEN ERROR: CLOSE WHATEVER IS OPEN (CLOSE IGNORES A DCB THAT IS
+                                    150 *  NOT OPEN), ISSUE A MESSAGE AND END WITH RC=16.
+                                    151 *---------------------------------------------------------------------
+000090                              152 OPENERR  DS    0H                 OPEN error handling routine
+                                    153          CLOSE (INFILE,,OUTFILE)  Close any DCB that is open
+000090                              155+         CNOP  0,4                      ALIGN LIST TO FULLWORD          01-CLOSE
+000090 4D10 C09C            0009C   156+         BAS   1,*+12                   LOAD REG1 W/LIST ADDR           01-CLOSE
+000094 00                           157+         DC    AL1(0)                   OPTION BYTE                     01-CLOSE
+000095 0001B0                       158+         DC    AL3(INFILE)              DCB OR ACB ADDRESS              01-CLOSE
+000098 80                           159+         DC    AL1(128)                 OPTION BYTE                     01-CLOSE
+000099 000210                       160+         DC    AL3(OUTFILE)             DCB OR ACB ADDRESS              01-CLOSE
+00009C 0A14                         161+         SVC   20                       ISSUE CLOSE SVC                 01-CLOSE
+                                    162          WTO   'COPYFB - OPEN FAILED FOR INFILE OR OUTFILE'
+00009E 0700                         164+         CNOP  0,4                                                      01-WTO
+0000A0 A715 0019            000D2   165+         BRAS  1,IHB0019A               BRANCH AROUND MESSAGE      @LCC 01-WTO
+0000A4 002E                         166+         DC    AL2(46)                  TEXT LENGTH            @YA17152 01-WTO
+0000A6 0000                         167+         DC    B'0000000000000000'      MCSFLAGS                        01-WTO
+0000A8 C3D6D7E8C6C24060             168+         DC    C'COPYFB - OPEN FAILED FOR INFILE OR OUTFILE'           X01-WTO
+0000B0 40D6D7C5D540C6C1                +                                        MESSAGE TEXT               @L6C
+0000D2                              169+IHB0019A DS    0H                                                       01-WTO
+0000D2 0A23                         170+         SVC   35                       ISSUE SVC 35               @L6A 01-WTO
+0000D4 41F0 0010            00010   171          LA    R15,16             Return code = 16 (severe error)
+                                    172 *
+                                    173 *---------------------------------------------------------------------
+                                    174 *  LINKAGE CONVENTION (EXIT) - RESTORE THE CALLER'S REGISTERS AND
+                                    175 *  RETURN CONTROL WITH THE RETURN CODE IN R15.
+                                    176 *---------------------------------------------------------------------
+i0000D8                              177 EXITPGM  DS    0H                 Single exit point of the program
+                                                                                                               Page    7
+  Active Usings: COPYFB,R12
+  Loc  Object Code    Addr1 Addr2  Stmt   Source Statement                                  HLASM R6.0  2026/11/27 06.34
+0000D8 58D0 D004            00004   178          L     R13,4(,R13)        R13 points back to caller's SA
+0000DC 58E0 D00C            0000C   179          L     R14,12(,R13)       Restore the return address
+0000E0 980C D014            00014   180          LM    R0,R12,20(R13)     Restore R0-R12 (R15 keeps the RC)
+0000E4 07FE                         181          BR    R14                Return control to the caller
+                                    182 *
+                                    183 *=====================================================================
+                                    184 *  DATA AREA
+                                    185 *=====================================================================
+0000E8                              186 SAVEAREA DS    18F                This program's save area (72 bytes)
+000130                              187 DWORK    DS    D                  Work area for CVD (8 bytes)
+000138                              188 RECORD   DS    CL80               Record read / written work area
+                                    189 *
+                                    190 *---------------------------------------------------------------------
+                                    191 *  WTO MESSAGE IN LIST FORMAT (MF=L) BUILT MANUALLY:
+                                    192 *  +0 LENGTH (2 BYTES) / +2 MCS FLAGS (2 BYTES) / +4 TEXT
+                                    193 *---------------------------------------------------------------------
+000188                              194 WTOMSG   DS    0F                 Align the WTO list on a fullword
+000188 0026                         195          DC    AL2(WTOEND-WTOMSG) Total length: header + text
+00018A 0000                         196          DC    XL2'0000'          MCS flags (no special options)
+00018C C3D6D7E8C6C24060             197          DC    C'COPYFB - RECORDS COPIED: '  Fixed text
+0001A5 4040404040404040             198 WTOCNT   DC    CL9' '             Number of records (zoned decimal)
+                      001AE         199 WTOEND   EQU   *                  Marks the end of the message
+                                    200 *
+                                    201 *---------------------------------------------------------------------
+                                    202 *  DCB FOR THE INPUT DATA SET (DDNAME INFILE)
+                                    203 *---------------------------------------------------------------------
+                                    204 INFILE   DCB   DDNAME=INFILE,      DD name in the JCL                  X
+                                                       DSORG=PS,           Physical sequential organiz.        X
+                                                       MACRF=GM,           GET in move mode                    X
+                                                       RECFM=FB,           Fixed blocked records               X
+                                                       LRECL=80,           Record length: 80 bytes             X
+                                                       EODAD=EOFRTN        Routine run at end of file
+                                    207+*                       DATA CONTROL BLOCK
+                                    208+*
+0001AE 0000
+0001B0                              209+INFILE   DC    0F'0'          ORIGIN ON WORD BOUNDARY                   01-DCB
+                                    210+*                       DIRECT ACCESS DEVICE INTERFACE
+0001B0 0000000000000000             211+         DC    BL16'0'        FDAD, DVTBL                               01-DCB
+0001C0 00000000                     212+         DC    A(0)           KEYLEN, DEVT, TRBAL                       01-DCB
+                                    213+*                       COMMON ACCESS METHOD INTERFACE
+0001C4 00                           214+         DC    AL1(0)         BUFNO, NUMBER OF BUFFERS                  01-DCB
+0001C5 000001                       215+         DC    AL3(1)         BUFCB, BUFFER POOL CONTROL BLOCK          01-DCB
+0001C8 0000                         216+         DC    AL2(0)         BUFL, BUFFER LENGTH                       01-DCB
+0001CA 4000                         217+         DC    BL2'0100000000000000' DSORG, DATA SET ORGANIZATION       01-DCB
+0001CC 00000001                     218+         DC    A(1)           IOBAD FOR EXCP OR RESERVED                01-DCB
+                                    219+*                       FOUNDATION EXTENSION
+0001D0 00                           220+         DC    BL1'00000000'  BFTEK, BFALN, DCBE INDICATORS             01-DCB
+0001D1 000066                       221+         DC    AL3(EOFRTN)    EODAD (END OF DATA ROUTINE ADDRESS)       01-DCB
+0001D4 90                           222+         DC    BL1'10010000'  RECFM (RECORD FORMAT)                     01-DCB
+0001D5 000000                       223+         DC    AL3(0)         EXLST (EXIT LIST ADDRESS)                 01-DCB
+                                    224+*                       FOUNDATION BLOCK
+0001D8 C9D5C6C9D3C54040             225+         DC    CL8'INFILE'    DDNAME                                    01-DCB
+0001E0 02                           226+         DC    BL1'00000010'  OFLGS (OPEN FLAGS)                        01-DCB
+i0001E1 00                           227+         DC    BL1'00000000'  IFLGS (IOS FLAGS)                         01-DCB
+                                                                                                               Page    8
+  Active Usings: COPYFB,R12
+  Loc  Object Code    Addr1 Addr2  Stmt   Source Statement                                  HLASM R6.0  2026/11/27 06.34
+0001E2 5000                         228+         DC    BL2'0101000000000000' MACR (MACRO FORMAT)                01-DCB
+                                    229+*                       BSAM-BPAM-QSAM INTERFACE
+0001E4 00                           230+         DC    BL1'00000000'  OPTCD, OPTION CODES                       01-DCB
+0001E5 000001                       231+         DC    AL3(1)         CHECK OR INTERNAL QSAM SYNCHRONIZING RTN. 01-DCB
+0001E8 00000001                     232+         DC    A(1)           SYNAD, SYNCHRONOUS ERROR RTN. (3 BYTES)   01-DCB
+0001EC 0000                         233+         DC    H'0'           INTERNAL ACCESS METHOD FLAGS              01-DCB
+0001EE 0000                         234+         DC    AL2(0)         BLKSIZE, BLOCK SIZE                       01-DCB
+0001F0 00000000                     235+         DC    F'0'           INTERNAL ACCESS METHOD FLAGS              01-DCB
+0001F4 00000001                     236+         DC    A(1)           INTERNAL ACCESS METHOD USE                01-DCB
+                                    237+*                            QSAM INTERFACE
+0001F8 00000001                     238+         DC    A(1)           EOBAD                                     01-DCB
+0001FC 00000001                     239+         DC    A(1)           RECAD                                     01-DCB
+000200 0000                         240+         DC    H'0'           QSWS (FLAGS) AND EITHER DIRCT OR BUFOFF   01-DCB
+000202 0050                         241+         DC    AL2(80)        LRECL                                     01-DCB
+000204 00                           242+         DC    BL1'00000000'  EROPT, ERROR OPTION                       01-DCB
+000205 000001                       243+         DC    AL3(1)         CNTRL                                     01-DCB
+000208 00000000                     244+         DC    H'0,0'         RESERVED AND PRECL                        01-DCB
+00020C 00000001                     245+         DC    A(1)           EOB, INTERNAL ACCESS METHOD FIELD         01-DCB
+                                    246 *
+                                    247 *---------------------------------------------------------------------
+                                    248 *  DCB FOR THE OUTPUT DATA SET (DDNAME OUTFILE) - SAME DCB AS INPUT.
+                                    249 *  BLKSIZE IS NOT CODED: IT COMES FROM THE JCL OR IS CALCULATED BY
+                                    250 *  THE SYSTEM (SYSTEM DETERMINED BLOCKSIZE) WHEN BLKSIZE=0.
+                                    251 *---------------------------------------------------------------------
+                                    252 OUTFILE  DCB   DDNAME=OUTFILE,     DD name in the JCL                  X
+                                                       DSORG=PS,           Physical sequential organiz.        X
+                                                       MACRF=PM,           PUT in move mode                    X
+                                                       RECFM=FB,           Fixed blocked records               X
+                                                       LRECL=80            Record length: 80 bytes
+                                    255+*                       DATA CONTROL BLOCK
+                                    256+*
+000210                              257+OUTFILE  DC    0F'0'          ORIGIN ON WORD BOUNDARY                   01-DCB
+                                    258+*                       DIRECT ACCESS DEVICE INTERFACE
+000210 0000000000000000             259+         DC    BL16'0'        FDAD, DVTBL                               01-DCB
+000220 00000000                     260+         DC    A(0)           KEYLEN, DEVT, TRBAL                       01-DCB
+                                    261+*                       COMMON ACCESS METHOD INTERFACE
+000224 00                           262+         DC    AL1(0)         BUFNO, NUMBER OF BUFFERS                  01-DCB
+000225 000001                       263+         DC    AL3(1)         BUFCB, BUFFER POOL CONTROL BLOCK          01-DCB
+000228 0000                         264+         DC    AL2(0)         BUFL, BUFFER LENGTH                       01-DCB
+00022A 4000                         265+         DC    BL2'0100000000000000' DSORG, DATA SET ORGANIZATION       01-DCB
+00022C 00000001                     266+         DC    A(1)           IOBAD FOR EXCP OR RESERVED                01-DCB
+                                    267+*                       FOUNDATION EXTENSION
+000230 00                           268+         DC    BL1'00000000'  BFTEK, BFALN, DCBE INDICATORS             01-DCB
+000231 000001                       269+         DC    AL3(1)         EODAD (END OF DATA ROUTINE ADDRESS)       01-DCB
+000234 90                           270+         DC    BL1'10010000'  RECFM (RECORD FORMAT)                     01-DCB
+000235 000000                       271+         DC    AL3(0)         EXLST (EXIT LIST ADDRESS)                 01-DCB
+                                    272+*                       FOUNDATION BLOCK
+000238 D6E4E3C6C9D3C540             273+         DC    CL8'OUTFILE'   DDNAME                                    01-DCB
+000240 02                           274+         DC    BL1'00000010'  OFLGS (OPEN FLAGS)                        01-DCB
+000241 00                           275+         DC    BL1'00000000'  IFLGS (IOS FLAGS)                         01-DCB
+000242 0050                         276+         DC    BL2'0000000001010000' MACR (MACRO FORMAT)                01-DCB
+                                    277+*                       BSAM-BPAM-QSAM INTERFACE
+000244 00                           278+         DC    BL1'00000000'  OPTCD, OPTION CODES                       01-DCB
+i000245 000001                       279+         DC    AL3(1)         CHECK OR INTERNAL QSAM SYNCHRONIZING RTN. 01-DCB
+                                                                                                               Page    9
+  Active Usings: COPYFB,R12
+  Loc  Object Code    Addr1 Addr2  Stmt   Source Statement                                  HLASM R6.0  2026/11/27 06.34
+000248 00000001                     280+         DC    A(1)           SYNAD, SYNCHRONOUS ERROR RTN. (3 BYTES)   01-DCB
+00024C 0000                         281+         DC    H'0'           INTERNAL ACCESS METHOD FLAGS              01-DCB
+00024E 0000                         282+         DC    AL2(0)         BLKSIZE, BLOCK SIZE                       01-DCB
+000250 00000000                     283+         DC    F'0'           INTERNAL ACCESS METHOD FLAGS              01-DCB
+000254 00000001                     284+         DC    A(1)           INTERNAL ACCESS METHOD USE                01-DCB
+                                    285+*                            QSAM INTERFACE
+000258 00000001                     286+         DC    A(1)           EOBAD                                     01-DCB
+00025C 00000001                     287+         DC    A(1)           RECAD                                     01-DCB
+000260 0000                         288+         DC    H'0'           QSWS (FLAGS) AND EITHER DIRCT OR BUFOFF   01-DCB
+000262 0050                         289+         DC    AL2(80)        LRECL                                     01-DCB
+000264 00                           290+         DC    BL1'00000000'  EROPT, ERROR OPTION                       01-DCB
+000265 000001                       291+         DC    AL3(1)         CNTRL                                     01-DCB
+000268 00000000                     292+         DC    H'0,0'         RESERVED AND PRECL                        01-DCB
+00026C 00000001                     293+         DC    A(1)           EOB, INTERNAL ACCESS METHOD FIELD         01-DCB
+                                    294 *
+                                    295 *---------------------------------------------------------------------
+                                    296 *  LITERAL POOL
+                                    297 *---------------------------------------------------------------------
+000270                              298          LTORG                    Literals generated by the macros
+                                    299 *
+                                    300 *---------------------------------------------------------------------
+                                    301 *  GENERAL PURPOSE REGISTER EQUATES
+                                    302 *---------------------------------------------------------------------
+                      00000         303 R0       EQU   0                  General purpose register 0
+                      00001         304 R1       EQU   1                  General purpose register 1
+                      00002         305 R2       EQU   2                  General purpose register 2
+                      00003         306 R3       EQU   3                  General purpose register 3
+                      00004         307 R4       EQU   4                  General purpose register 4
+                      00005         308 R5       EQU   5                  General purpose register 5
+                      00006         309 R6       EQU   6                  General purpose register 6
+                      00007         310 R7       EQU   7                  General purpose register 7
+                      00008         311 R8       EQU   8                  General purpose register 8
+                      00009         312 R9       EQU   9                  General purpose register 9
+                      0000A         313 R10      EQU   10                 General purpose register 10
+                      0000B         314 R11      EQU   11                 General purpose register 11
+                      0000C         315 R12      EQU   12                 General purpose register 12
+                      0000D         316 R13      EQU   13                 General purpose register 13
+                      0000E         317 R14      EQU   14                 General purpose register 14
+                      0000F         318 R15      EQU   15                 General purpose register 15
+                                    319 *
+                                    320 *---------------------------------------------------------------------
+                                    321 *  IHADCB DSECT - MAPS THE DCB FIELDS (DCBOFLGS, ETC.).
+                                    322 *  IT MUST BE AT THE END BECAUSE IT GENERATES A DSECT (NO STORAGE).
+                                    323 *---------------------------------------------------------------------
+                                    324          DCBD  DSORG=PS,DEVD=DA   Generate the IHADCB DSECT for PS
+                                    325+*                       DCB SYMBOLIC DEFINITION FOR
+                                    326+*                       PHYSICAL SEQUENTIAL
+000000                00000 00060   327+IHADCB   DSECT ,              DCBPTR                           @ZA05613 01-DCBD
+                                    328+*
+                                    329+***********************************************************************
+                                    330+*DATA CONTROL BLOCK DEFINITION
+                                    331+*
+                                    332+*$MAC(DCBD):
+                                    333+*
+i                                    334+*  STATUS - Z/OS DFSMS V1R12
+                                                                                                               Page   10
+  Active Usings: COPYFB,R12
+D-Loc  Object Code    Addr1 Addr2  Stmt   Source Statement                                  HLASM R6.0  2026/11/27 06.34
+                                    335+*
+                                    336+***********************************************************************
+                      00080         337+DCBBIT0  EQU   128                                             @ZA05613 01-DCBD
+                      00040         338+DCBBIT1  EQU   64                                              @ZA05613 01-DCBD
+                      00020         339+DCBBIT2  EQU   32                                              @ZA05613 01-DCBD
+                      00010         340+DCBBIT3  EQU   16                                              @ZA05613 01-DCBD
+                      00008         341+DCBBIT4  EQU   8                                               @ZA05613 01-DCBD
+                      00004         342+DCBBIT5  EQU   4                                               @ZA05613 01-DCBD
+                      00002         343+DCBBIT6  EQU   2                                               @ZA05613 01-DCBD
+                      00001         344+DCBBIT7  EQU   1                                               @ZA05613 01-DCBD
+                                    345+***********************************************************************
+                                    346+***********************************************************************
+                                    347+*                       DEVICE INTERFACES
+                                    348+***********************************************************************
+                                    349+***********************************************************************
+                                    350+*                       DIRECT ACCESS DEVICES
+                                    351+***********************************************************************
+000000                              352+DCBDCBE  DS    A              DCBE ADDRESS ASSOCIATED WITH THIS    @L5A 01-DCBD
+                                    353+*                             DCB IF A DCBE EXISTS. A DCBE EXISTS  @L5A
+                                    354+*                             IF BOTH DCBH0 AND DCBH1 ARE SET ON.  @L5A
+                                    355+*                             (DSORG=PS OR PO)                     @L5A
+000004                00004 00000   356+         ORG   DCBDCBE                                             @L5A 01-DCBD
+000000                              357+DCBRELAD DS    CL4        --- PARTITIONED ORGANIZATION DATA SET -       01-DCBD
+                                    358+*                             ADDRESS (IN THE FORM TTRN) OF MEMBER
+                                    359+*                             CURRENTLY USED (UNLESS A DCBE EXISTS
+                                    360+*                             IN WHICH CASE THIS OFFSET POINTS TO  @L5A
+                                    361+*                             THE DCBE, SEE DCBDCBE).              @L5A
+                                    362+*                             IF A DCBE EXISTS, THE TTRN IS STORED @L5A
+                                    363+*                             IN THE DCBE (DCBERELA). HIERARCHY    @L5A
+                                    364+*                             BITS DEFINE THE EXISTENCE OF A DCBE. @L5A
+                                    365+*                         --- SEQUENTIAL DATA SET - ADDRESS OF     @L5A
+                                    366+*                             DCBE IF ONE EXISTS.                  @L5A
+000004                              367+DCBKEYCN DS    FL1            KEYED BLOCK OVERHEAD CONSTANT             01-DCBD
+000005                              368+DCBFDAD  DS    CL8            DISK ADDRESS OF THE BLOCK THAT WAS   @13C 01-DCBD
+                                    369+*                             JUST READ OR WRITTEN. ABSOLUTE       @13A
+                                    370+*                             ADDRESS (MBBCCHHR) FOR BASIC OR LARGE@13A
+                                    371+*                             FORMAT OR PDS. RELATIVE BLOCK NUMBER @13A
+                                    372+*                             FOR EXTENDED FORMAT OR COMPRESSED    @13A
+                                    373+*                             FORMAT. RECORD LOCATOR TOKEN OR      @13A
+                                    374+*                             MEMBER LOCATOR TOKEN FOR PDSE. NOT A @13A
+                                    375+*                             PROGRAMMING INTERFACE.               @13A
+00000D                0000D 0000C   376+         ORG   DCBFDAD+7                                                01-DCBD
+00000C                              377+DCBDVTBL DS    0A             SAME AS DCBDVTBA BELOW                    01-DCBD
+00000C                              378+         DS    X              LAST BYTE OF DCBFDAD                      01-DCBD
+00000D                              379+DCBDVTBA DS    AL3            ADDRESS OF ENTRY IN I/O DEVICE            01-DCBD
+                                    380+*                             CHARACTERISTICS TABLE FOR DEVICE BEING
+                                    381+*                             USED
+000010                              382+         DS    FL1            DCBKEYLE - KEY LENGTH OF DATA SET         01-DCBD
+000011                              383+         DS    C              DCBDEVT - DEVICE TYPE                     01-DCBD
+                                    384+*   FOR MASKS FOR ISAM DIRECT ACCESS, SEE DCBOVDEV IN ISAM SECTION
+                      00021         385+DCBDV311 EQU   X'21'          2311 DISK STORAGE                @ZA46311 01-DCBD
+                      00022         386+DCBDV301 EQU   X'22'          2301 PARALLEL DRUM                        01-DCBD
+                      00023         387+DCBDV303 EQU   X'23'          2303 SERIAL DRUM                          01-DCBD
+                      00024         388+DCBDV345 EQU   X'24'          9345 DISK STORAGE FACILITY(NO LONGER @11C 01-DCBD
+i                                    389+*                             FOR 2302 DISK STORAGE)               @11A
+                                                                                                               Page   11
+  Active Usings: COPYFB,R12
+D-Loc  Object Code    Addr1 Addr2  Stmt   Source Statement                                  HLASM R6.0  2026/11/27 06.34
+                      00025         390+DCBDV321 EQU   X'25'          2321 DATA CELL STORAGE           @ZA46311 01-DCBD
+                      00026         391+DCBD1305 EQU   X'26'          2305 DRUM MODEL-1                @ZA46311 01-DCBD
+                      00027         392+DCBDV305 EQU   X'27'          2305 DRUM MODEL-2                @ZA46311 01-DCBD
+                      00028         393+DCBDV314 EQU   X'28'          2314/2319 DISK STORAGE FACILITY  @ZA46311 01-DCBD
+                      00029         394+DCBDV330 EQU   X'29'          3330 DISK STORAGE FACILITY       @ZA46311 01-DCBD
+                                    395+*                             3330 MODEL-1                     @ZA46311
+                                    396+*                             3330 MODEL-2                     @ZA46311
+                                    397+*                             3333 MODEL-1                     @ZA46311
+                      0002A         398+DCBDV340 EQU   X'2A'          3340/3344 DISK STORAGE FACILITY  @ZA46311 01-DCBD
+                      0002B         399+DCBDV350 EQU   X'2B'          3350 DISK STORAGE FACILITY       @ZA46311 01-DCBD
+                                    400+*                             MODELS A2, B2, AND C2            @ZA46311
+                      0002C         401+DCBDV375 EQU   X'2C'          3375 DISK STORAGE FACILITY           @01A 01-DCBD
+                      0002D         402+DCBDV331 EQU   X'2D'          3330 MODEL-11 OR 3333 MODEL-11   @ZA46311 01-DCBD
+                                    403+*                             DISK STORAGE FACILITY            @ZA46311
+                      0002E         404+DCBDV380 EQU   X'2E'          3380 DISK STORAGE FACILITY           @01A 01-DCBD
+                      0002F         405+DCBDV390 EQU   X'2F'          3390 DISK STORAGE FACILITY           @08A 01-DCBD
+000012                              406+DCBTRBAL DS    H              CODE INDICATING CAPACITY REMAINING ON     01-DCBD
+                                    407+*                             CURRENT TRACK AFTER A WRITE OPERATION.
+                                    408+*                             VALID WHEN DCBOFLWR IS ON. FIELD IS
+                                    409+*                             USED BY TRKCALC.                     @L5C
+                                    410+***********************************************************************
+                                    411+*                       ACCESS METHOD COMMON INTERFACE
+                                    412+***********************************************************************
+000014                00014 00010   413+         ORG   IHADCB+16                                                01-DCBD
+000010                              414+DCBRELB  DS    0F             SAME AS DCBREL BELOW                      01-DCBD
+000010                              415+DCBKEYLE DS    FL1            KEY LENGTH OF DATA SET                    01-DCBD
+000011                              416+DCBDEVT  DS    0C             DEVICE TYPE                               01-DCBD
+                      0004F         417+DCBDVTRM EQU   X'4F'          TERMINAL.  (DD CONTAINS TERM=TS)          01-DCBD
+000011                              418+DCBREL   DS    FL3            NUMBER OF RELATIVE TRACKS OR BLOCKS IN    01-DCBD
+                                    419+*                             THIS DATA SET (BDAM)
+000014                              420+DCBBUFCB DS    0A             ADDRESS OF BUFFER POOL CONTROL BLOCK      01-DCBD
+000014                              421+DCBBUFNO DS    FL1            NUMBER OF BUFFERS REQUIRED FOR THIS DATA  01-DCBD
+                                    422+*                             SET.  MAY RANGE FROM 0 TO 255.  IF
+                                    423+*                             UNBLOCKED SPANNED RECORDS ARE USED,
+                                    424+*                             NUMBER OF SEGMENT WORK AREAS REQUIRED
+                                    425+*                             FOR THIS DATA SET.
+000015                              426+DCBBUFCA DS    AL3            ADDRESS OF BUFFER POOL CONTROL BLOCK      01-DCBD
+000018                              427+DCBBUFL  DS    H              LENGTH OF BUFFER.  MAY RANGE FROM 0 TO    01-DCBD
+                                    428+*                             32,760.                              @L5C
+00001A                              429+DCBDSORG DS    0BL2           DATA SET ORGANIZATION BEING USED          01-DCBD
+00001A                              430+DCBDSRG1 DS    BL1            FIRST BYTE OF DCBDSORG                    01-DCBD
+                      00080         431+DCBDSGIS EQU   DCBBIT0        IS - INDEXED SEQUENTIAL ORGANIZATION      01-DCBD
+                                    432+*                             NOTE - ISAM NO LONGER SUPPORTED      @LAA
+                      00040         433+DCBDSGPS EQU   DCBBIT1        PS - PHYSICAL SEQUENTIAL ORGANIZATION     01-DCBD
+                      00020         434+DCBDSGDA EQU   DCBBIT2        DA - DIRECT ORGANIZATION                  01-DCBD
+                      00010         435+DCBDSGCX EQU   DCBBIT3        CX - BTAM OR QTAM LINE GROUP              01-DCBD
+                      00002         436+DCBDSGPO EQU   DCBBIT6        PO - PARTITIONED ORGANIZATION             01-DCBD
+                      00001         437+DCBDSGU  EQU   DCBBIT7        U  - UNMOVABLE, THE DATA CONTAINS         01-DCBD
+                                    438+*                                  LOCATION DEPENDENT INFORMATION
+00001B                              439+DCBDSRG2 DS    BL1            SECOND BYTE OF DCBDSORG                   01-DCBD
+                      00080         440+DCBDSGGS EQU   DCBBIT0        GS - GRAPHICS ORGANIZATION                01-DCBD
+                      00040         441+DCBDSGTX EQU   DCBBIT1        TX - TCAM LINE GROUP                      01-DCBD
+                      00020         442+DCBDSGTQ EQU   DCBBIT2        TQ - TCAM MESSAGE QUEUE                   01-DCBD
+                      00008         443+DCBACBM  EQU   DCBBIT4        ALWAYS 0 IN DCB. ALWAYS 1 IN ACB     @L5C 01-DCBD
+i                      00004         444+DCBDSGTR EQU   DCBBIT5        TR - TCAM 3705                            01-DCBD
+                                                                                                               Page   12
+  Active Usings: COPYFB,R12
+D-Loc  Object Code    Addr1 Addr2  Stmt   Source Statement                                  HLASM R6.0  2026/11/27 06.34
+00001C                              445+DCBIOBAD DS    0A             ADDRESS OF IOB WHEN CHAINED SCHEDULING IS 01-DCBD
+                                    446+*                             USED OR FOR 1419/1275
+00001C                              447+DCBICQE  DS    0A             ADDRESS OF ICQE                           01-DCBD
+00001C                              448+DCBODEB  DS    0A             ADDRESS OF OLD DEB                        01-DCBD
+00001C                              449+DCBLNP   DS    0FL1           3525 PRINTER LINE POSITION COUNTER        01-DCBD
+                                    450+*                                                                  @07D
+00001C                              451+DCBQSLM  DS    BL1            QSAM LOCATE MODE LOGICAL RECORD INTERFACE 01-DCBD
+                                    452+*                             INDICATOR BYTE FOR UPDAT PROCESSING OF
+                                    453+*                             SPANNED RECORDS
+                      00080         454+DCB1DVDS EQU   DCBBIT0        ONLY ONE DEVICE IS ALLOCATED TO THIS      01-DCBD
+                                    455+*                             DATA SET
+                      00040         456+DCBUPDCM EQU   DCBBIT1        UPDATE COMPLETE, FREE OLD DEB             01-DCBD
+                      00030         457+DCBUPDBT EQU   DCBBIT2+DCBBIT3   UPDATE BITS                            01-DCBD
+                      00020         458+DCBUPDT  EQU   DCBBIT2        UPDATE TO TAKE PLACE                      01-DCBD
+                      00030         459+DCBNUPD  EQU   DCBBIT2+DCBBIT3   NO UPDATE TO TAKE PLACE                01-DCBD
+                      00010         460+DCBSVDEB EQU   DCBBIT3        OLD DEB ADDRESS MUST BE SAVED             01-DCBD
+00001D                              461+DCBIOBAA DS    0AL3           SAME AS DCBIOBAD ABOVE                    01-DCBD
+00001D                              462+DCBICQEA DS    0AL3           SAME AS DCBICQE ABOVE                     01-DCBD
+00001D                              463+DCBODEBA DS    AL3            ADDRESS OF OLD DEB                        01-DCBD
+000020                00020 0001C   464+         ORG   IHADCB+28                                                01-DCBD
+00001C                              465+DCBSVCXL DS    0A             SAME AS DCBSVCXA BELOW                    01-DCBD
+00001C                              466+         DS    X              RESERVED                                  01-DCBD
+00001D                              467+DCBSVCXA DS    AL3            POINTER TO EXIT LIST OF JES               01-DCBD
+                                    468+*                             C.I. INTERFACE CONTROL SVC
+                                    469+***********************************************************************
+                                    470+*                       FOUNDATION EXTENSION
+                                    471+***********************************************************************
+000020                              472+DCBEODAD DS    0A             SAME AS DCBEODA BELOW                     01-DCBD
+000020                              473+DCBHIARC DS    0BL1           HIERARCHY BITS                            01-DCBD
+000020                              474+DCBBFTEK DS    0BL1           BUFFERING TECHNIQUE BITS                  01-DCBD
+000020                              475+DCBBFALN DS    BL1            BUFFER ALIGNMENT BITS                     01-DCBD
+                      00080         476+DCBH1    EQU   DCBBIT0        HIERARCHY 1 MAIN STORAGE IF BIT5 IS ZERO. 01-DCBD
+                                    477+*                             DCBE EXISTS IF BIT5 IS ON.           @L5A
+                                    478+*              INTERPRETATION OF BITS DCBH1 AND DCBH0:             @L5A
+                                    479+*                 DCBH1 DCBH0                                      @L5A
+                                    480+*                   0     0   -  NO HIARCHY,  NO DCBE.             @L5A
+                                    481+*                   1     0   -  HIARCHY=1,   NO DCBE.             @L5A
+                                    482+*                   0     1   -  HIARCHY=0,   NO DCBE.             @L5A
+                                    483+*                   1     1   -  NO HIARCHY,  DCBE EXISTS, POINTED @L5A
+                                    484+*                                             TO BY DCBDCBE        @L5A
+                      00070         485+DCBBFT   EQU   DCBBIT1+DCBBIT2+DCBBIT3 BUFFERING TECHNIQUE              01-DCBD
+                      00060         486+DCBBFTA  EQU   DCBBIT1+DCBBIT2   QSAM LOCATE MODE PROCESSING OF SPANNED 01-DCBD
+                                    487+*                             RECORDS - OPEN IS TO CONSTRUCT A RECORD
+                                    488+*                             AREA IF IT AUTOMATICALLY CONSTRUCTS
+                                    489+*                             BUFFERS
+                      00020         490+DCBBFTR  EQU   DCBBIT2        FOR BSAM CREATE BDAM PROCESSING OF        01-DCBD
+                                    491+*                             UNBLOCKED SPANNED RECORDS - SOFTWARE
+                                    492+*                             TRACK OVERFLOW.  FOR BSAM INPUT
+                                    493+*                             PROCESSING OF UNBLOCKED SPANNED RECORDS
+                                    494+*                             WITH KEYS - RECORD OFFSET PROCESSING.
+                      00040         495+DCBBFTS  EQU   DCBBIT1        SIMPLE BUFFERING - BIT 3 IS ZERO          01-DCBD
+                      00020         496+DCBBFTKR EQU   DCBBIT2        UNBLOCKED SPANNED RECORDS - SOFTWARE      01-DCBD
+                                    497+*                             TRACK OVERFLOW (BDAM)
+                      00010         498+DCBBFTE  EQU   DCBBIT3        EXCHANGE BUFFERING - BIT 1 IS ZERO        01-DCBD
+i                      00008         499+DCBBFTKD EQU   DCBBIT4        DYNAMIC BUFFERING (BTAM)                  01-DCBD
+                                                                                                               Page   13
+  Active Usings: COPYFB,R12
+D-Loc  Object Code    Addr1 Addr2  Stmt   Source Statement                                  HLASM R6.0  2026/11/27 06.34
+                      00008         500+DCBBFTK  EQU   DCBBIT4        LRECL  IN 'K' UNITS FOR XLRI         @L2A 01-DCBD
+                      00068         501+DCBBXLRI EQU   DCBBIT1+DCBBIT2+DCBBIT4   EXTENDED LOGICAL RECORD   @L2A 01-DCBD
+                                    502+*                                      INTERFACE MODE FOR SPANNED  @L2A
+                                    503+*                                      RECORDS GREATER THAN 32K -  @L2A
+                                    504+*                                      ALL RECORDS TRANSFERRED TO  @L2A
+                                    505+*                                      OR FROM THE RECORD AREA.    @L2A
+                      00004         506+DCBH0    EQU   DCBBIT5        HIERARCHY 0 MAIN STORAGE IF BIT0 IS ZERO  01-DCBD
+                                    507+*                             DCBE EXISTS IF BIT0 IS ON. SEE DCBH1 @L5A
+                      00003         508+DCBBFA   EQU   DCBBIT6+DCBBIT7   BUFFER ALIGNMENT                       01-DCBD
+                      00002         509+DCBBFAD  EQU   DCBBIT6        DOUBLEWORD BOUNDARY                       01-DCBD
+                      00001         510+DCBBFAF1 EQU   DCBBIT7        FULLWORD NOT A DOUBLEWORD BOUNDARY,       01-DCBD
+                                    511+*                             CODED IN DCB MACRO INSTRUCTION
+                      00003         512+DCBBFAF2 EQU   DCBBIT6+DCBBIT7   FULLWORD NOT A DOUBLEWORD BOUNDARY,    01-DCBD
+                                    513+*                             CODED IN DCB MACRO INSTRUCTION
+000021                              514+DCBEODA  DS    AL3            ADDRESS OF A USER-PROVIDED ROUTINE TO     01-DCBD
+                                    515+*                             HANDLE END-OF-DATA CONDITIONS
+000024                              516+DCBEXLST DS    0A             ADDRESS OF USER-PROVIDED LIST OF EXITS    01-DCBD
+000024                              517+DCBRECFM DS    BL1            RECORD FORMAT                             01-DCBD
+                      000E0         518+DCBRECLA EQU   DCBBIT0+DCBBIT1+DCBBIT2 RECORD LENGTH INDICATOR - ASCII  01-DCBD
+                      00020         519+DCBRECD  EQU   DCBBIT2        ASCII VARIABLE RECORD LENGTH              01-DCBD
+                      000C0         520+DCBRECL  EQU   DCBBIT0+DCBBIT1   RECORD LENGTH INDICATOR                01-DCBD
+                      00080         521+DCBRECF  EQU   DCBBIT0        FIXED RECORD LENGTH                       01-DCBD
+                      00040         522+DCBRECV  EQU   DCBBIT1        VARIABLE RECORD LENGTH                    01-DCBD
+                      000C0         523+DCBRECU  EQU   DCBBIT0+DCBBIT1   UNDEFINED RECORD LENGTH                01-DCBD
+                      00020         524+DCBRECTO EQU   DCBBIT2        TRACK OVERFLOW                            01-DCBD
+                      00010         525+DCBRECBR EQU   DCBBIT3        BLOCKED RECORDS                           01-DCBD
+                      00008         526+DCBRECSB EQU   DCBBIT4        FOR FIXED LENGTH RECORD FORMAT - STANDARD 01-DCBD
+                                    527+*                             BLOCKS.  FOR VARIABLE LENGTH RECORD
+                                    528+*                             FORMAT - SPANNED RECORDS
+                      00006         529+DCBRECCC EQU   DCBBIT5+DCBBIT6   CONTROL CHARACTER INDICATOR            01-DCBD
+                      00004         530+DCBRECCA EQU   DCBBIT5        ASA CONTROL CHARACTER                     01-DCBD
+                      00002         531+DCBRECCM EQU   DCBBIT6        MACHINE CONTROL CHARACTER                 01-DCBD
+                      00000         532+DCBRECC  EQU   X'00'          NO CONTROL CHARACTER                      01-DCBD
+                      00001         533+DCBRECKL EQU   DCBBIT7        KEY LENGTH (KEYLEN) WAS SPECIFIED IN DCB  01-DCBD
+                                    534+*                             MACRO INSTRUCTION
+000025                              535+DCBEXLSA DS    AL3            ADDRESS OF USER-PROVIDED LIST OF EXITS    01-DCBD
+                                    536+***********************************************************************
+                                    537+*                       FOUNDATION BEFORE OPEN
+                                    538+***********************************************************************
+000028                00028 00028   539+         ORG   IHADCB+40                                                01-DCBD
+000028                              540+DCBDDNAM DS    CL8            NAME ON THE DD STATEMENT WHICH DEFINES    01-DCBD
+                                    541+*                             THE DATA SET ASSOCIATED WITH THIS DCB
+000030                              542+DCBOFLGS DS    BL1            FLAGS USED BY OPEN ROUTINE                01-DCBD
+                      00080         543+DCBOFLWR EQU   DCBBIT0        IF ZERO, LAST I/O OPERATION WAS READ OR   01-DCBD
+                                    544+*                             POINT.  IF ONE, LAST I/O OPERATION WAS
+                                    545+*                             WRITE.
+                      00080         546+DCBOFIOD EQU   DCBBIT0        DATA SET IS BEING OPENED FOR INPUT OR     01-DCBD
+                                    547+*                             OUTPUT (BDAM)
+                      00040         548+DCBOFLRB EQU   DCBBIT1        LAST I/O OPERATION WAS IN READ BACKWARD   01-DCBD
+                                    549+*                             MODE
+                      00020         550+DCBOFEOV EQU   DCBBIT2        SET TO 1 BY EOV WHEN IT CALLS CLOSE       01-DCBD
+                                    551+*                             ROUTINE FOR CONCATENATION OF DATA SETS
+                                    552+*                             WITH UNLIKE ATTRIBUTES
+                      00010         553+DCBOFOPN EQU   DCBBIT3        AN OPEN HAS BEEN SUCCESSFULLY COMPLETED   01-DCBD
+i                      00008         554+DCBOFPPC EQU   DCBBIT4        SET TO 1 BY PROBLEM PROGRAM TO INDICATE A 01-DCBD
+                                                                                                               Page   14
+  Active Usings: COPYFB,R12
+D-Loc  Object Code    Addr1 Addr2  Stmt   Source Statement                                  HLASM R6.0  2026/11/27 06.34
+                                    555+*                             CONCATENATION OF UNLIKE ATTRIBUTES
+                      00004         556+DCBOFTM  EQU   DCBBIT5        TAPE MARK HAS BEEN READ                   01-DCBD
+                      00002         557+DCBOFUEX EQU   DCBBIT6        SET TO 0 BY AN I/O SUPPORT FUNCTION WHEN  01-DCBD
+                                    558+*                             THAT FUNCTION TAKES A USER EXIT. SET TO 1
+                                    559+*                             ON RETURN FROM USER EXIT TO THE I/O
+                                    560+*                             SUPPORT FUNCTION WHICH TOOK THE EXIT.
+                      00002         561+DCBOLOCK EQU   DCBOFUEX       SAME USE AS DCBOFUEX                 @LAA 01-DCBD
+                      00001         562+DCBOFIOF EQU   DCBBIT7        SET TO 1 BY AN I/O SUPPORT FUNCTION IF    01-DCBD
+                                    563+*                             DCB IS TO BE PROCESSED BY THAT FUNCTION
+                      00001         564+DCBOBUSY EQU   DCBOFIOF       SAME USE AS DCBOFIOF                 @LAA 01-DCBD
+000031                              565+DCBIFLG  DS    BL1            FLAGS USED BY IOS IN COMMUNICATING ERROR  01-DCBD
+                                    566+*                             CONDITIONS AND IN DETERMINING CORRECTIVE
+                                    567+*                             PROCEDURES
+                      000C0         568+DCBIBEC  EQU   DCBBIT0+DCBBIT1   ERROR CORRECTION INDICATOR             01-DCBD
+                      00000         569+DCBIFNEP EQU   X'00'          NOT IN ERROR PROCEDURE                    01-DCBD
+                      00040         570+DCBEX    EQU   DCBBIT1        ERROR CORRECTION OR IOS PAGE FIX IN       01-DCBD
+                                    571+*                             PROCESS
+                      000C0         572+DCBIFPEC EQU   DCBBIT0+DCBBIT1   PERMANENT ERROR CORRECTION             01-DCBD
+                      00030         573+DCBIBPCT EQU   DCBBIT2+DCBBIT3   PRINTER CARRIAGE TAPE PUNCH INDICATOR  01-DCBD
+                      00020         574+DCBIFC9  EQU   DCBBIT2        CHANNEL 9 PRINTER CARRIAGE TAPE PUNCH     01-DCBD
+                                    575+*                             SENSED
+                      00010         576+DCBIFC12 EQU   DCBBIT3        CHANNEL 12 PRINTER CARRIAGE TAPE PUNCH    01-DCBD
+                                    577+*                             SENSED
+                      0000C         578+DCBIBIOE EQU   DCBBIT4+DCBBIT5   IOS ERROR ROUTINE USE INDICATOR        01-DCBD
+                      00000         579+DCBIFER  EQU   X'00'          ALWAYS USE I/O SUPERVISOR ERROR ROUTINE   01-DCBD
+                      00004         580+DCBIFNE1 EQU   DCBBIT5        NEVER USE I/O SUPERVISOR ERROR ROUTINE    01-DCBD
+                      00004         581+DCBIFTIM EQU   DCBBIT5        TEST IOS MASK (IMSK) FOR ERROR PROCEDURE  01-DCBD
+                                    582+*                             (BTAM)
+                      00008         583+DCBIFNE2 EQU   DCBBIT4        NEVER USE I/O SUPERVISOR ERROR ROUTINE    01-DCBD
+                      0000C         584+DCBIFNE3 EQU   DCBBIT4+DCBBIT5   NEVER USE I/O SUPERVISOR ERROR ROUTINE 01-DCBD
+000032                              585+DCBMACR  DS    0BL2           MACRO INSTRUCTION REFERENCE               01-DCBD
+000032                              586+DCBMACR1 DS    BL1            FIRST BYTE OF DCBMACR                     01-DCBD
+                      00080         587+DCBMRECP EQU   DCBBIT0        EXECUTE CHANNEL PROGRAM (EXCP) ---        01-DCBD
+                                    588+*                             ALWAYS ZERO (BSAM, QSAM, BPAM, BISAM,
+                                    589+*                             QISAM, BDAM) --- RESERVED (QTAM, BTAM)
+                      00040         590+DCBMRFE  EQU   DCBBIT1        FOUNDATION EXTENSION IS PRESENT (EXCP)    01-DCBD
+                      00040         591+DCBMRGET EQU   DCBBIT1        GET (QSAM, QISAM, TCAM)                   01-DCBD
+                      00040         592+DCBMRPTQ EQU   DCBBIT1        PUT FOR MESSAGE GROUP (QTAM) ---          01-DCBD
+                                    593+*                             ALWAYS ZERO (BSAM, BPAM, BISAM, BDAM) ---
+                                    594+*                             RESERVED (BTAM)
+                      00020         595+DCBMRAPG EQU   DCBBIT2        APPENDAGES ARE REQUIRED (EXCP)            01-DCBD
+                      00020         596+DCBMRRD  EQU   DCBBIT2        READ (BSAM, BPAM, BISAM, BDAM, BTAM)      01-DCBD
+                      00020         597+DCBMRWRQ EQU   DCBBIT2        WRITE FOR LINE GROUP (QTAM) ---           01-DCBD
+                                    598+*                             ALWAYS ZERO (QSAM, QISAM)
+                      00010         599+DCBMRCI  EQU   DCBBIT3        COMMON INTERFACE (EXCP)                   01-DCBD
+                      00010         600+DCBMRMVG EQU   DCBBIT3        MOVE MODE OF GET (QSAM, QISAM)            01-DCBD
+                      00010         601+DCBMRRDK EQU   DCBBIT3        KEY SEGMENT WITH READ (BDAM) ---          01-DCBD
+                                    602+*                             ALWAYS ZERO (BISAM) ---
+                                    603+*                             RESERVED (BSAM, BPAM, QTAM, BTAM)
+                      00008         604+DCBMRLCG EQU   DCBBIT4        LOCATE MODE OF GET (QSAM, QISAM)          01-DCBD
+                      00008         605+DCBMRRDI EQU   DCBBIT4        ID ARGUMENT WITH READ (BDAM) ---          01-DCBD
+                                    606+*                             ALWAYS ZERO (BISAM) ---
+                                    607+*                             RESERVED (EXCP, BSAM, BPAM, QTAM, BTAM)
+                      00004         608+DCBMRABC EQU   DCBBIT5        USER'S PROGRAM MAINTAINS ACCURATE BLOCK   01-DCBD
+i                                    609+*                             COUNT (EXCP)
+                                                                                                               Page   15
+  Active Usings: COPYFB,R12
+D-Loc  Object Code    Addr1 Addr2  Stmt   Source Statement                                  HLASM R6.0  2026/11/27 06.34
+                      00004         610+DCBMRPT1 EQU   DCBBIT5        POINT (WHICH IMPLIES NOTE) (BSAM, BPAM)   01-DCBD
+                      00004         611+DCBMRSBG EQU   DCBBIT5        SUBSTITUTE MODE OF GET (QSAM)             01-DCBD
+                      00004         612+DCBMRDBF EQU   DCBBIT5        DYNAMIC BUFFERING (BISAM, BDAM) ---       01-DCBD
+                                    613+*                             ALWAYS ZERO (QISAM) ---
+                                    614+*                             RESERVED (QTAM, BTAM)
+                      00002         615+DCBPGFXA EQU   DCBBIT6        PAGE FIX APPENDAGE IS SPECIFIED (EXCP)    01-DCBD
+                      00002         616+DCBMRCRL EQU   DCBBIT6        CNTRL (BSAM, QSAM)                        01-DCBD
+                      00002         617+DCBMRCHK EQU   DCBBIT6        CHECK (BISAM)                             01-DCBD
+                      00002         618+DCBMRRDX EQU   DCBBIT6        READ EXCLUSIVE (BDAM) ---                 01-DCBD
+                                    619+*                             RESERVED (BPAM, QISAM, QTAM, BTAM)
+                      00001         620+DCBMRDMG EQU   DCBBIT7        DATA MODE OF GET (QSAM)                   01-DCBD
+                      00001         621+DCBMRCK  EQU   DCBBIT7        CHECK (BDAM) --- RESERVED (EXCP, BSAM,    01-DCBD
+                                    622+*                             BPAM, BISAM, QISAM, QTAM, BTAM)
+000033                              623+DCBMACR2 DS    BL1            SECOND BYTE OF DCBMACR                    01-DCBD
+                      00080         624+DCBMRSTL EQU   DCBBIT0        SETL (QISAM) --- ALWAYS ZERO (BSAM, QSAM, 01-DCBD
+                                    625+*                             BPAM, BISAM, BDAM) ---
+                                    626+*                             RESERVED (EXCP, QTAM, BTAM)
+                      00040         627+DCBMRPUT EQU   DCBBIT1        PUT (QSAM, TCAM) - PUT OR PUTX (QISAM)    01-DCBD
+                      00040         628+DCBMRGTQ EQU   DCBBIT1        GET FOR MESSAGE GROUP (QTAM) ---          01-DCBD
+                                    629+*                             ALWAYS ZERO (BSAM, BPAM, BISAM, BDAM) ---
+                                    630+*                             RESERVED (EXCP, BTAM)
+                      00020         631+DCBMRWRT EQU   DCBBIT2        WRITE (BSAM, BPAM, BISAM, BDAM, BTAM)     01-DCBD
+                      00020         632+DCBMRRDQ EQU   DCBBIT2        READ FOR LINE GROUP (QTAM) ---            01-DCBD
+                                    633+*                             ALWAYS ZERO (QSAM, QISAM) ---
+                                    634+*                             RESERVED (EXCP)
+                      00010         635+DCBMRMVP EQU   DCBBIT3        MOVE MODE OF PUT (QSAM, QISAM)            01-DCBD
+                      00010         636+DCBMRWRK EQU   DCBBIT3        KEY SEGMENT WITH WRITE (BDAM) ---         01-DCBD
+                                    637+*                             ALWAYS ZERO (BISAM) ---
+                                    638+*                             RESERVED (EXCP, BSAM, BPAM, QTAM, BTAM)
+                      00008         639+DCBMR5WD EQU   DCBBIT4        FIVE-WORD DEVICE INTERFACE (EXCP)         01-DCBD
+                      00008         640+DCBMRLDM EQU   DCBBIT4        LOAD MODE BSAM (CREATE BDAM DATA SET)     01-DCBD
+                                    641+*                             (BSAM)
+                      00008         642+DCBMRLCP EQU   DCBBIT4        LOCATE MODE OF PUT (QSAM, QISAM)          01-DCBD
+                      00008         643+DCBMRIDW EQU   DCBBIT4        ID ARGUMENT WITH WRITE (BDAM) ---         01-DCBD
+                                    644+*                             ALWAYS ZERO (BISAM) ---
+                                    645+*                             RESERVED (BPAM, QTAM, BTAM)
+                      00004         646+DCBMR4WD EQU   DCBBIT5        FOUR-WORD DEVICE INTERFACE (EXCP)         01-DCBD
+                      00004         647+DCBMRPT2 EQU   DCBBIT5        POINT (WHICH IMPLIES NOTE) (BSAM, BPAM)   01-DCBD
+                      00004         648+DCBMRTMD EQU   DCBBIT5        SUBSTITUTE MODE (QSAM)                    01-DCBD
+                      00004         649+DCBMRUIP EQU   DCBBIT5        UPDATE IN PLACE (PUTX) (QISAM) ---        01-DCBD
+                                    650+*                             ALWAYS ZERO (BISAM) ---
+                                    651+*                             RESERVED (BDAM, QTAM, BTAM)
+                      00002         652+DCBMR3WD EQU   DCBBIT6        THREE-WORD DEVICE INTERFACE (EXCP)        01-DCBD
+                      00002         653+DCBMRCTL EQU   DCBBIT6        CNTRL (BSAM, QSAM)                        01-DCBD
+                      00002         654+DCBMRSTK EQU   DCBBIT6        SETL BY KEY (QISAM)                       01-DCBD
+                      00002         655+DCBMRAWR EQU   DCBBIT6        ADD TYPE OF WRITE (BDAM) ---              01-DCBD
+                                    656+*                             ALWAYS ZERO (BISAM) ---
+                                    657+*                             RESERVED (BPAM, QTAM, BTAM)
+                      00001         658+DCBMR1WD EQU   DCBBIT7        ONE-WORD DEVICE INTERFACE (EXCP)          01-DCBD
+                      00001         659+DCBMRSWA EQU   DCBBIT7        USER'S PROGRAM HAS PROVIDED A SEGMENT     01-DCBD
+                                    660+*                             WORK AREA POOL (BSAM CREATE BDAM, BDAM)
+                      00001         661+DCBMRDMD EQU   DCBBIT7        DATA MODE (QSAM)                          01-DCBD
+                      00001         662+DCBMRSTI EQU   DCBBIT7        SETL BY ID (QISAM) ---                    01-DCBD
+                                    663+*                             ALWAYS ZERO (BISAM) ---
+i                                    664+*                             RESERVED (BPAM, QTAM, BTAM)
+                                                                                                               Page   16
+  Active Usings: COPYFB,R12
+D-Loc  Object Code    Addr1 Addr2  Stmt   Source Statement                                  HLASM R6.0  2026/11/27 06.34
+                                    665+*        AIF   (NOT &DSORGXE).C8A8                                 @L1A
+                      00034         666+DCBLNGXE EQU   *-IHADCB       LENGTH OF DCB FOR EXCP WITH          @L1A 01-DCBD
+                                    667+*                             EXTENSION INTERFACE                  @L1A
+                                    668+***********************************************************************
+                                    669+*                       FOUNDATION AFTER OPEN
+                                    670+***********************************************************************
+000034                00034 00028   671+         ORG   IHADCB+40                                                01-DCBD
+000028                              672+DCBTIOT  DS    AL2            OFFSET FROM TIOT ORIGIN TO TIOELNGH FIELD 01-DCBD
+                                    673+*                             IN TIOT ENTRY FOR DD STATEMENT ASSOCIATED
+                                    674+*                             WITH THIS DCB
+00002A                              675+DCBMACRF DS    0BL2           SAME AS DCBMACR BEFORE OPEN               01-DCBD
+00002A                              676+DCBMACF1 DS    BL1            FIRST BYTE OF DCBMACRF                    01-DCBD
+00002B                              677+DCBMACF2 DS    BL1            SECOND BYTE OF DCBMACRF                   01-DCBD
+00002C                              678+DCBDEBAD DS    0A             ADDRESS OF ASSOCIATED DEB                 01-DCBD
+00002C                              679+DCBIFLGS DS    BL1            SAME AS DCBIFLG BEFORE OPEN               01-DCBD
+                      000C0         680+DCBIFEC  EQU   DCBBIT0+DCBBIT1   ERROR CORRECTION INDICATOR             01-DCBD
+                      00030         681+DCBIFPCT EQU   DCBBIT2+DCBBIT3   PRINTER CARRIAGE TAPE PUNCH INDICATOR  01-DCBD
+                      0000C         682+DCBIFIOE EQU   DCBBIT4+DCBBIT5   IOS ERROR ROUTINE USE INDICATOR        01-DCBD
+                                    683+*                                NOTE-SETTING THESE FLAGS WILL     @LCA
+                                    684+*                                DISABLE THE IOS ERROR ROUTINE(ERP)@LCA
+                                    685+*                                TO REENABLE ERP SET THESE FLAGS   @LCA
+                                    686+*                                OFF                               @LCA
+                      00002         687+DCBIFLDT EQU   DCBBIT6        POSSIBLE LOST DATA CONDITION     @42480LP 01-DCBD
+                                    688+*                             SUCH AS FOR A PRINTER            @42480LP
+00002D                              689+DCBDEBA  DS    AL3            ADDRESS OF ASSOCIATED DEB                 01-DCBD
+000030                00030 00030   690+         ORG   IHADCB+48                                                01-DCBD
+000030                              691+DCBREAD  DS    0A             ADDRESS OF READ MODULE                    01-DCBD
+000030                              692+DCBWRITE DS    0A             ADDRESS OF WRITE MODULE          @ZA11086 01-DCBD
+000030                              693+DCBOFLG  DS    BL1            SAME AS DCBOFLGS BEFORE OPEN     @ZA11086 01-DCBD
+000031                              694+DCBREADA DS    0AL3           ADDRESS OF READ MODULE           @ZA11086 01-DCBD
+000031                              695+DCBWRITA DS    AL3            ADDRESS OF WRITE MODULE          @ZA11086 01-DCBD
+000034                00034 00030   696+         ORG   IHADCB+48                                                01-DCBD
+000030                              697+DCBGET   DS    0A             ADDRESS OF GET MODULE                     01-DCBD
+000030                              698+DCBPUT   DS    0A             ADDRESS OF PUT MODULE            @ZA11086 01-DCBD
+000030                              699+DCBOFLG1 DS    BL1            SAME AS DCBOFLGS BEFORE OPEN     @ZA14562 01-DCBD
+000031                              700+DCBGETA  DS    0AL3           ADDRESS OF GET MODULE            @ZA11086 01-DCBD
+000031                              701+DCBPUTA  DS    AL3            ADDRESS OF PUT MODULE            @ZA11086 01-DCBD
+                                    702+***********************************************************************
+                                    703+*                       QSAM-BSAM-BPAM COMMON INTERFACE
+                                    704+***********************************************************************
+000034                00034 00034   705+         ORG   IHADCB+52                                                01-DCBD
+000034                              706+DCBGERR  DS    0A             ADDRESS OF SYNCHRONIZING ROUTINE FOR GET  01-DCBD
+000034                              707+DCBPERR  DS    0A             ADDRESS OF SYNCHRONIZING ROUTINE FOR PUT  01-DCBD
+000034                              708+DCBCHECK DS    0A             ADDRESS OF CHECK MODULE                   01-DCBD
+000034                              709+DCBOPTCD DS    BL1            OPTION CODES                              01-DCBD
+                      00080         710+DCBOPTW  EQU   DCBBIT0        WRITE VALIDITY CHECK (DASD)               01-DCBD
+                                    711+*                             (BSAM, BPAM, QSAM, ISAM, BDAM)
+                      00040         712+DCBOPTU  EQU   DCBBIT1        ALLOW DATA CHECK CAUSED BY INVALID        01-DCBD
+                                    713+*                             CHARACTER (1403 PRINTER WITH UCS FEATURE)
+                                    714+*                             (BSAM, QSAM)
+                                    715+*                             MSS WINDOW PROCESSING REQUESTED  @ZA37313
+                                    716+*                             (BSAM, QSAM)                     @ZA37313
+                      00020         717+DCBOPTC  EQU   DCBBIT2        CHAINED SCHEDULING                        01-DCBD
+                                    718+*                             (BSAM, BPAM, QSAM)
+i                      00010         719+DCBOPTH  EQU   DCBBIT3        1287/1288 OPTICAL READER - HOPPER EMPTY   01-DCBD
+                                                                                                               Page   17
+  Active Usings: COPYFB,R12
+D-Loc  Object Code    Addr1 Addr2  Stmt   Source Statement                                  HLASM R6.0  2026/11/27 06.34
+                                    720+*                             EXIT (BSAM, BPAM)
+                      00010         721+DCBOPTO  EQU   DCBBIT3        1285/1287 OPTICAL READER - ON-LINE        01-DCBD
+                                    722+*                             CORRECTION (QSAM)
+                      00010         723+DCBBCKPT EQU   DCBBIT3        CHANNEL-END APPENDAGE IS TO BYPASS DOS    01-DCBD
+                                    724+*                             EMBEDDED CHECKPOINT RECORDS ON TAPE
+                                    725+*                             (BSAM, QSAM)
+                      00008         726+DCBOPTQ  EQU   DCBBIT4        TRANSLATION TO OR FROM ASCII              01-DCBD
+                                    727+*                             (BSAM, BPAM, QSAM)
+                      00004         728+DCBOPTZ  EQU   DCBBIT5        MAGNETIC TAPE DEVICES - USE REDUCED ERROR 01-DCBD
+                                    729+*                             RECOVERY PROCEDURE (EXCP, BSAM, BPAM,
+                                    730+*                             QSAM)
+                      00004         731+DCBSRCHD EQU   DCBBIT5        USE SEARCH DIRECT, INSTEAD OF SEARCH      01-DCBD
+                                    732+*                             PREVIOUS, ON RECORD POSITION SENSING
+                                    733+*                             DEVICE  (EXCP, BSAM, BPAM, QSAM)
+                      00002         734+DCBOPTT  EQU   DCBBIT6        USER TOTALING (BSAM, QSAM)                01-DCBD
+                                    735+*
+                                    736+*
+                      00001         737+DCBOPTJ  EQU   DCBBIT7        3800 PRINTER, OPTCD=J; (DYNAMIC  @Z40MSRZ 01-DCBD
+                                    738+*                             SELECT OF TRANSLATE TABLES)      @Z40MSRZ
+000035                              739+DCBGERRA DS    0AL3           ADDRESS OF SYNCHRONIZING ROUTINE FOR GET  01-DCBD
+000035                              740+DCBPERRA DS    0AL3           ADDRESS OF SYNCHRONIZING ROUTINE FOR PUT  01-DCBD
+000035                              741+DCBCHCKA DS    AL3            ADDRESS OF CHECK MODULE                   01-DCBD
+000038                              742+DCBSYNAD DS    0A             ADDRESS OF USER-PROVIDED SYNAD ROUTINE    01-DCBD
+000038                              743+DCBIOBL  DS    FL1            IOB LENGTH IN DOUBLE WORDS                01-DCBD
+000039                              744+DCBSYNA  DS    AL3            ADDRESS OF USER-PROVIDED SYNAD ROUTINE    01-DCBD
+00003C                              745+DCBFLAG1 DS    0BL1           TCAM APPLICATION PROGRAM FLAGS            01-DCBD
+                                    746+*                             (BSAM, BPAM, QSAM)
+00003C                              747+DCBCIND1 DS    BL1            CONDITION INDICATORS                      01-DCBD
+                      00080         748+DCBCNTOV EQU   DCBBIT0        DIRECT ACCESS - TRACK OVERFLOW IN USE     01-DCBD
+                                    749+*                             (BSAM, BPAM, QSAM)
+                                    750+*                             2540 CARD PUNCH - DATA SET WAS OPENED BUT
+                                    751+*                             NO DATA WAS WRITTEN (QSAM)
+                      00080         752+DCBSTQCK EQU   DCBBIT0        STOP EQUAL QUICK WAS SPECIFIED FOR        01-DCBD
+                                    753+*                             APPLICATION PROG. DCBS (TCAM)
+                      00040         754+DCBSTFLS EQU   DCBBIT1        STOP EQUAL FLUSH WAS SPECIFIED FOR        01-DCBD
+                                    755+*                             APPLICATION PROG. DCBS (TCAM)
+                      00040         756+DCBCNSRD EQU   DCBBIT1        SEARCH DIRECT (BSAM, BPAM, QSAM)          01-DCBD
+                      00020         757+DCBCNEVB EQU   DCBBIT2        END OF VOLUME - USED BY EOB ROUTINES      01-DCBD
+                                    758+*                             (BSAM, BPAM, QSAM)
+                      00010         759+DCBCNEVA EQU   DCBBIT3        END OF VOLUME - USED BY CHANNEL-END       01-DCBD
+                                    760+*                             APPENDAGE ROUTINES (BSAM, BPAM, QSAM)
+                      00008         761+DCBCNCI  EQU   DCBBIT4        SAM-SI COMPATABILITY INTERFACE (CI)       01-DCBD
+                                    762+*                             PROCESSING HAS BEEN PERFORMED (BSAM,
+                                    763+*                             QSAM)                                @04A
+                      00004         764+DCBCNBRM EQU   DCBBIT5        BLOCKED RECORD BIT MODIFIED (BSAM,BPAM,   01-DCBD
+                                    765+*                             QSAM)
+                      00002         766+DCBCBNDF EQU   DCBBIT6 -      OPEN DEFAULTED BUFNO (QSAM)          @L7A 01-DCBD
+                      00001         767+DCBCNEXB EQU   DCBBIT7        EXCHANGE BUFFERING SUPPORTED (QSAM)       01-DCBD
+                      00001         768+DCBCDWDO EQU   DCBBIT7        INTERNAL USE ONLY, DCBOFFSW IS       @LBA 01-DCBD
+                                    769+*                               DOUBLE-WORD OFFSET                 @LBA
+00003D                              770+DCBCIND2 DS    BL1            CONDITION INDICATORS                      01-DCBD
+                      00080         771+DCBCNSTO EQU   DCBBIT0        PARTITIONED DATA SET - STOW HAS BEEN      01-DCBD
+                                    772+*                             PERFORMED (BSAM, BPAM, QSAM)
+                                    773+*                             SEQUENTIAL DATA SET - UPDATE (BSAM, BPAM)
+i                      00040         774+DCBCNWR0 EQU   DCBBIT1        DIRECT ORGANIZATION DATA SET - LAST I/O   01-DCBD
+                                                                                                               Page   18
+  Active Usings: COPYFB,R12
+D-Loc  Object Code    Addr1 Addr2  Stmt   Source Statement                                  HLASM R6.0  2026/11/27 06.34
+                                    775+*                             WAS A WRITE RECORD ZERO
+                                    776+*                             (BSAM, BPAM, QSAM)
+                                    777+*                             SEQUENTIAL DATA SET - UPDATE EOF IS
+                                    778+*                             INDICATED (BSAM, BPAM)
+                      00020         779+DCBCNCLO EQU   DCBBIT2        CLOSE IN PROCESS (QSAM)                   01-DCBD
+                      00010         780+DCBCNIOE EQU   DCBBIT3        PERMANENT I/O ERROR (BSAM, BPAM, QSAM)    01-DCBD
+                      00008         781+DCBCNBFP EQU   DCBBIT4        OPEN ACQUIRED BUFFER POOL                 01-DCBD
+                                    782+*                             (BSAM, BPAM, QSAM)
+                      00004         783+DCBCNCHS EQU   DCBBIT5        CHAINED SCHEDULING BEING SUPPORTED        01-DCBD
+                                    784+*                             (BSAM, BPAM, QSAM)
+                      00002         785+DCBCNFEO EQU   DCBBIT6        FEOV BIT (BSAM, BPAM, QSAM)               01-DCBD
+                      00001         786+DCBCNQSM EQU   DCBBIT7        ALWAYS ZERO (BSAM, BPAM)                  01-DCBD
+                                    787+*                             THIS IS A QSAM DCB (QSAM)
+00003E                              788+DCBBLKSI DS    H              MAXIMUM BLOCK SIZE                        01-DCBD
+000040                              789+DCBWCPO  DS    AL1            OFFSET OF WRITE CHANNEL PROGRAM FROM THE  01-DCBD
+                                    790+*                             START OF IOB
+000041                              791+DCBWCPL  DS    FL1            LENGTH OF WRITE CHANNEL PROGRAM           01-DCBD
+000042                              792+DCBOFFSR DS    AL1            OFFSET OF READ CCW FROM BSAM/BPAM PREFIX  01-DCBD
+                                    793+*                             OF IOB
+000043                              794+DCBOFFSW DS    AL1            OFFSET OF WRITE CCW FROM BSAM/BPAM PREFIX 01-DCBD
+                                    795+*                             OF IOB
+000044                              796+DCBIOBA  DS    A              FOR NORMAL SCHEDULING, ADDRESS OF QSAM OR 01-DCBD
+                                    797+*                             BSAM/BPAM PREFIX OF IOB.  FOR CHAINED
+                                    798+*                             SCHEDULING, ADDRESS OF ICB.  FOR
+                                    799+*                             1419/1275, ADDRESS OF MAGNETIC INTERRUPT
+                                    800+*                             CONTROL BLOCK (MICB) CURRENTLY BEING
+                                    801+*                             PROCESSED BY READ ROUTINE.  FOR TSO
+                                    802+*                             TERMINAL DATA SET OPENED FOR INPUT AND
+                                    803+*                             FORMAT U, SIMULATED LOW-ORDER FOUR BYTES
+                                    804+*                             OF IOBCSW
+000048                00048 00044   805+         ORG   IHADCB+68                                           @L4A 01-DCBD
+000044                              806+         DS    X                                                   @L4A 01-DCBD
+000045                              807+DCBIOBB  DS    AL3            SAME AS DCBIOBA ABOVE                @L4A 01-DCBD
+000048                00048 00044   808+         ORG   IHADCB+68                                                01-DCBD
+000044                              809+DCBCICB  DS    0A             SAME AS DCBCICBA BELOW                    01-DCBD
+000044                              810+         DS    X              INTERNAL ACCESS METHOD USE                01-DCBD
+000045                              811+DCBCICBA DS    AL3            POINTER TO JES C.I.                       01-DCBD
+                                    812+*                             CONTROL BLOCK (CICB)
+000048                00048 00050   813+         ORG   IHADCB+80                                                01-DCBD
+000050                              814+DCBDIRCT DS    0H             NUMBER OF BYTES USED IN LAST DIRECTORY    01-DCBD
+                                    815+*                             BLOCK (RANGE 0-254)  (BSAM, BPAM)
+000050                              816+DCBQSWS  DS    0BL1           FLAG BYTE                                 01-DCBD
+                      00004         817+DCBPOPEN EQU   DCBBIT5        QSAM PARALLEL INPUT PROCESSING            01-DCBD
+000050                              818+DCBUSASI DS    B              FLAG BYTE FOR ASCII TAPES                 01-DCBD
+                      00040         819+DCBBLBP  EQU   DCBBIT1        BLOCK PREFIX IS FOUR BYTE FIELD           01-DCBD
+                                    820+*                             CONTAINING BLOCK LENGTH IN UNPACKED
+                                    821+*                             DECIMAL (SPECIFIED BY BUFFER=L).
+                      00038         822+DCBQADFS EQU   DCBBIT2+DCBBIT3+DCBBIT4 USED TO PERFORM SEQUENCE         01-DCBD
+                                    823+*                             CHECKING WITH MULTIPLE FUNCTION SUPPORT
+                                    824+*                             FOR 3525 (BSAM, QSAM)
+                      00020         825+DCBQADF1 EQU   DCBBIT2        FIRST BIT OF DCBQADFS                     01-DCBD
+                      00010         826+DCBQADF2 EQU   DCBBIT3        SECOND BIT OF DCBQADFS                    01-DCBD
+                      00008         827+DCBQADF3 EQU   DCBBIT4        THIRD BIT OF DCBQADFS                     01-DCBD
+                      00002         828+DCB3525A EQU   DCBBIT6        DCB IS 3525 - ASSOCIATED DATA             01-DCBD
+i                                    829+*                             SETS EXIST
+                                                                                                               Page   19
+  Active Usings: COPYFB,R12
+D-Loc  Object Code    Addr1 Addr2  Stmt   Source Statement                                  HLASM R6.0  2026/11/27 06.34
+                      00001         830+DCBQSTRU EQU   DCBBIT7        TRUNC ENTRY POINT ENTERED (QSAM)          01-DCBD
+000051                              831+DCBBUFOF DS    0FL1           BLOCK PREFIX LENGTH (0-99), SPECIFIED BY  01-DCBD
+                                    832+*                             BUFOFF=N OR BUFOFF=L
+000051                              833+DCBDIRCQ DS    FL1            NUMBER OF BYTES USED IN LAST DIRECTORY    01-DCBD
+                                    834+*                             BLOCK (RANGE 0-254)  (QSAM)
+                                    835+***********************************************************************
+                                    836+*                       BSAM-BPAM INTERFACE
+                                    837+***********************************************************************
+000052                00052 00048   838+         ORG   IHADCB+72                                                01-DCBD
+000048                              839+DCBEOBR  DS    0A             ADDRESS OF END-OF-BLOCK MODULE FOR READ   01-DCBD
+000048                              840+DCBNCP   DS    FL1            NUMBER OF CHANNEL PROGRAMS.               01-DCBD
+                                    841+*                             NUMBER OF READ OR WRITE REQUESTS WHICH
+                                    842+*                             MAY BE ISSUED PRIOR TO A CHECK, NUMBER
+                                    843+*                             OF IOB'S GENERATED.  (99 MAXIMUM)
+000049                              844+DCBEOBRA DS    AL3            ADDRESS OF END-OF-BLOCK MODULE FOR READ   01-DCBD
+00004C                              845+DCBEOBW  DS    A              ADDRESS OF END-OF-BLOCK MODULE FOR WRITE. 01-DCBD
+                                    846+*                             FOR BSAM CREATE BDAM PROCESSING OF
+                                    847+*                             UNBLOCKED SPANNED RECORDS WITH BKTEK=R
+                                    848+*                             SPECIFIED, ADDRESS OF SEGMENT WORK AREA
+                                    849+*                             CONTROL BLOCK
+000050                              850+         DS    H              DCBDIRCT - NUMBER OF BYTES USED IN LAST   01-DCBD
+                                    851+*                             DIRECTORY BLOCK  (RANGE 0-254)
+000052                              852+DCBLRECL DS    H              LOGICAL RECORD LENGTH                     01-DCBD
+000054                              853+DCBCNTRL DS    0A             ADDRESS OF CNTRL MODULE                   01-DCBD
+000054                              854+DCBNOTE  DS    0A             ADDRESS OF NOTE/POINT MODULE              01-DCBD
+000054                              855+DCBPOINT DS    A              ADDRESS OF NOTE/POINT MODULE              01-DCBD
+                      00058         856+DCBLNGBS EQU   *-IHADCB       LENGTH OF DCB FOR BSAM INTERFACE     @L1A 01-DCBD
+                      00058         857+DCBLNGPO EQU   *-IHADCB       LENGTH OF DCB FOR BPAM INTERFACE     @L1A 01-DCBD
+                                    858+***********************************************************************
+                                    859+*                       QSAM INTERFACE
+                                    860+***********************************************************************
+000058                00058 00048   861+         ORG   IHADCB+72                                                01-DCBD
+000048                              862+DCBLCCW  DS    0A             FOR EXCHANGE BUFFERING, ADDRESS OF LAST   01-DCBD
+                                    863+*                             CCW IN LIST
+000048                              864+DCBEOBAD DS    A              FOR SIMPLE BUFFERING, ADDRESS OF LAST     01-DCBD
+                                    865+*                             BYTE OF CURRENT BUFFER
+00004C                              866+DCBCCCW  DS    0A             FOR EXCHANGE BUFFERING, ADDRESS OF        01-DCBD
+                                    867+*                             CURRENT OR NEXT CCW
+00004C                              868+DCBRECAD DS    0A             ADDRESS OF CURRENT OR NEXT LOGICAL RECORD 01-DCBD
+00004C                              869+         DS    XL1 -          DCBRECBT DELETED                     @L7C 01-DCBD
+00004D                              870+DCBRECA  DS    AL3            ADDRESS OF CURRENT OR NEXT LOGICAL RECORD 01-DCBD
+000050                              871+         DS    B              DCBQSWS - FLAG BYTE                       01-DCBD
+000051                              872+         DS    FL1            DCBDIRCQ - NUMBER OF BYTES USED IN LAST   01-DCBD
+                                    873+*                             DIRECTORY BLOCK (RANGE 0-254)
+000052                              874+         DS    H              DCBLRECL - LOGICAL RECORD LENGTH          01-DCBD
+000054                              875+         DS    0A             DCBCNTRL - ADDRESS OF CNTRL MODULE        01-DCBD
+000054                              876+DCBEROPT DS    BL1            ERROR OPTION                              01-DCBD
+                      00080         877+DCBERACC EQU   DCBBIT0        ACCEPT PERMANENT ERROR                    01-DCBD
+                      00040         878+DCBERSKP EQU   DCBBIT1        SKIP PERMANENT ERROR                      01-DCBD
+                      00020         879+DCBERABE EQU   DCBBIT2        ABNORMAL END OF TASK                      01-DCBD
+                      00001         880+DCBERBAM EQU   DCBBIT7        OPEN TURNED OFF BFTEK=A              @05A 01-DCBD
+000055                              881+DCBXLREC DS    0AL3           LRECL WHEN IN XLRI MODE              @L2A 01-DCBD
+000055                              882+         DS    AL3            DCBCNTRA  - ADDRESS OF CNTRL MODULE  @L2A 01-DCBD
+000058                              883+         DS    XL2            RESERVED                                  01-DCBD
+i00005A                              884+DCBPRECL DS    H              FORMAT F RECORDS: BLOCK LENGTH            01-DCBD
+                                                                                                               Page   20
+  Active Usings: COPYFB,R12
+D-Loc  Object Code    Addr1 Addr2  Stmt   Source Statement                                  HLASM R6.0  2026/11/27 06.34
+                                    885+*                             FORMAT U RECORDS: MAXIMUM BLOCK LENGTH
+                                    886+*                             FORMAT V RECORDS:
+                                    887+*                               UNSPANNED RECORDS: MAXIMUM BLOCK LENGTH
+                                    888+*                               SPANNED RECORDS:
+                                    889+*                                 PUT, NOT DATA MODE:
+                                    890+*                                   MAXIMUM BLOCK LENGTH
+                                    891+*                                 PUT, DATA MODE:
+                                    892+*                                   DATA LENGTH
+                                    893+*                                 GET:
+                                    894+*                                   SEGMENT CONTROL CODE OF PREVIOUS
+                                    895+*                                   SEGMENT
+00005C                              896+DCBEOB   DS    A              ADDRESS OF END OF BLOCK MODULE            01-DCBD
+                      00060         897+DCBLNGQS EQU   *-IHADCB       LENGTH OF DCB WITH QSAM INTERFACE    @L1A 01-DCBD
+                      00060         898+DCBLNGPS EQU   *-IHADCB       LENGTH OF DCB SUFFICIENT FOR QSAM OR @P2C 01-DCBD
+                                    899+*                                 BSAM INTERFACE                   @P2A
+                                    900 *
+000000                              901          END   COPYFB             End of source; entry point
+»
+                                                 Relocation Dictionary                                         Page   21
+   Pos.Id   Rel.Id   Address  Type    Length  Action                                        HLASM R6.0  2026/11/27 06.34
+  00000001 00000001 0000001D   A         3       +
+  00000001 00000001 00000021   A         3       +
+  00000001 00000001 0000006D   A         3       +
+  00000001 00000001 00000071   A         3       +
+  00000001 00000001 00000095   A         3       +
+  00000001 00000001 00000099   A         3       +
+  00000001 00000001 000001D1   A         3       +
+»
+                               Ordinary Symbol and Literal Cross Reference                                     Page   22
+Symbol   Length   Value     Id    R Type Asm  Program   Defn References                     HLASM R6.0  2026/11/27 06.34
+COPYFB        1 00000000 00000001     J                   39   40    41    49U  901
+DCBBIT0       1 00000080 FFFFFFFF A   U                  337  431   440   454   476   518   520   521   523   543   546
+                                                              568   572   587   624   680   710   748   752   771   877
+DCBBIT1       1 00000040 FFFFFFFF A   U                  338  433   441   456   485   486   495   501   518   520   522
+                                                              523   548   568   570   572   590   591   592   627   628
+                                                              680   712   754   756   774   819   878
+DCBBIT2       1 00000020 FFFFFFFF A   U                  339  434   442   457   458   459   485   486   490   496   501
+                                                              518   519   524   550   573   574   595   596   597   631
+                                                              632   681   717   757   779   822   825   879
+DCBBIT3       1 00000010 FFFFFFFF A   U                  340  435   457   459   460   485   498   525   553   573   576
+                                                              599   600   601   635   636   681   719   721   723   759
+                                                              780   822   826
+DCBBIT4       1 00000008 FFFFFFFF A   U                  341  443   499   500   501   526   554   578   583   584   604
+                                                              605   639   640   642   643   682   726   761   781   822
+                                                              827
+DCBBIT5       1 00000004 FFFFFFFF A   U                  342  444   506   529   530   556   578   580   581   584   608
+                                                              610   611   612   646   647   648   649   682   728   731
+                                                              764   783   817
+DCBBIT6       1 00000002 FFFFFFFF A   U                  343  436   508   509   512   529   531   557   615   616   617
+                                                              618   652   653   654   655   687   734   766   785   828
+DCBBIT7       1 00000001 FFFFFFFF A   U                  344  437   508   510   512   533   562   620   621   658   659
+                                                              661   662   737   767   768   786   830   880
+DCBDCBE       4 00000000 FFFFFFFF     A  A               352  356
+DCBFDAD       8 00000005 FFFFFFFF     C  C               368  376
+DCBOFIOF      1 00000001 FFFFFFFF A   U                  562  564
+DCBOFLGS      1 00000030 FFFFFFFF     B  B               542   84    87
+DCBOFOPN      1 00000010 FFFFFFFF A   U                  553   84    87
+DCBOFUEX      1 00000002 FFFFFFFF A   U                  557  561
+DWORK         8 00000130 00000001     D  D               187  136M  137
+EOFRTN        2 00000066 00000001     H  H               126  221
+EXITPGM       2 000000D8 00000001     H  H               177  146B
+IHADCB        1 00000000 FFFFFFFF     J                  327   83U  413   464   539   666   671   690   696   705   805
+                                                              808   813   838   856   857   861   897   898
+IHB0019A      2 000000D2 00000001     H  H               169  165B
+INFILE        4 000001B0 00000001     F  F               209   71    82   105   132   158
+OPENERR       2 00000090 00000001     H  H               152   85B   88B
+OUTFILE       4 00000210 00000001     F  F               257   73    86   115   134   160
+READLOOP      2 0000003E 00000001     H  H               100  120B
+RECORD       80 00000138 00000001     C  C               188  106   116
+R0            1 00000000 00000001 A   U                  303  180M
+R11           1 0000000B 00000001 A   U                  314   50M   51    52    53
+R12           1 0000000C 00000001 A   U                  315   47    48M   49U  180M
+R13           1 0000000D 00000001 A   U                  316   47    51    52    53M  178M  178   179   180
+R14           1 0000000E 00000001 A   U                  317   47   179M  181B
+R15           1 0000000F 00000001 A   U                  318   48   145M  145   171M
+R2            1 00000002 00000001 A   U                  305   82M   83U   86M   89D
+R5            1 00000005 00000001 A   U                  308   58M   58   110M  136
+SAVEAREA      4 000000E8 00000001     F  F               186   50
+WTOCNT        9 000001A5 00000001     C  C               198  137M  138M  138M
+WTOEND        1 000001AE 00000001     U                  199  195
+WTOMSG        4 00000188 00000001     F  F               194  143   195
+»
+                                          Macro and Copy Code Source Summary                                   Page   23
+ Con Source                                        Volume    Members                        HLASM R6.0  2026/11/27 06.34
+  L1 SYS1.MACLIB                                   VTMVSC    CLOSE    DCB      DCBD     GET      IHBINNRA IHBINNRR
+                                                             IHB01    OPEN     PUT      SYSSTATE WTO
+»
+                                                Dsect Cross Reference                                          Page   24
+Dsect     Length      Id       Defn                                                         HLASM R6.0  2026/11/27 06.34
+IHADCB   00000060  FFFFFFFF     327
+»
+                                                      Using Map                                                Page   25
+                                                                                            HLASM R6.0  2026/11/27 06.34
+  Stmt  -----Location----- Action ----------------Using----------------- Reg Max     Last Label and Using Text
+          Count      Id           Type          Value    Range     Id        Disp    Stmt
+    49  00000006  00000001 USING  ORDINARY    00000000 00001000 00000001  12 00210    156 COPYFB,R12
+    83  0000002A  00000001 USING  ORDINARY    00000000 00001000 FFFFFFFF   2 00030     87 IHADCB,R2
+    89  0000003E  00000001 DROP                                            2              R2
+»
+                                   General Purpose Register Cross Reference                                    Page   26
+ Register  References (M=modified, B=branch, U=USING, D=DROP, N=index)                      HLASM R6.0  2026/11/27 06.34
+    0(0)      47   106M  116M  180M
+    1(1)      47    69M  105M  108   115M  118   130M  143M  156M  165M  180M
+    2(2)      47    82M   83U   86M   89D  180M
+    3(3)      47   180M
+    4(4)      47   180M
+    5(5)      47    58M   58   110M  136   180M
+    6(6)      47   180M
+    7(7)      47   180M
+    8(8)      47   180M
+    9(9)      47   180M
+   10(A)      47   180M
+   11(B)      47    50M   51    52    53   180M
+   12(C)      47    48M   49U  180M
+   13(D)      47    51    52    53M  178M  178   179   180
+   14(E)      47   109M  119M  179M  181B
+   15(F)      47    48   107M  107   108M  109B  117M  117   118M  119B  145M  145   171M
+»
+                                  Diagnostic Cross Reference and Assembler Summary                             Page   27
+                                                                                            HLASM R6.0  2026/11/27 06.34
+     No Statements Flagged in this Assembly
+HIGH LEVEL ASSEMBLER, 5696-234, RELEASE 6.0, PTF UO07449
+SYSTEM: z/OS 03.01.00              JOBNAME: COPYFBJ     STEPNAME: ASM        PROCSTEP: (NOPROC)
+Unicode Module:   ASMA047C   From Page     1148   To Page    17584           ECECP: International 1
+Data Sets Allocated for this Assembly
+ Con DDname   Data Set Name                                Volume  Member
+  P1 SYSIN    USERID.ASM                                   ZXPC02  COPYFB
+  L1 SYSLIB   SYS1.MACLIB                                  VTMVSC
+  L2          SYS1.MODGEN                                  VTMVSC
+     SYSLIN   SYS26331.T063405.RA000.COPYFBJ.OBJ.H01       VPWRKC
+     SYSPRINT USERID.COPYFBJ.JOB08172.D0000103.?
+
+  26828K allocated to Buffer Pool       Storage required    1088K
+    200 Primary Input Records Read         8744 Library Records Read                  0 Work File Reads
+      0 ASMAOPT Records Read               1138 Primary Print Records Written         0 Work File Writes
+     13 Object Records Written                0 ADATA Records Written
+Assembly Start Time: 06.34.08 Stop Time: 06.34.08 Processor Time: 00.00.00.0061
+Return Code 000

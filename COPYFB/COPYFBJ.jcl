@@ -1,40 +1,40 @@
-//COPYFBJ  JOB (ACCT),'EXEMPLO1',CLASS=A,MSGCLASS=X,
+//COPYFBJ  JOB (ACCT),'EXAMPLE1',CLASS=A,MSGCLASS=X,
 //             MSGLEVEL=(1,1),NOTIFY=&SYSUID,COND=(0,NE)
 //*====================================================================
 //* JOB......: COPYFBJ
-//* FUNCAO...: COMPILA (ASMA90), LINKEDITA (IEWL) E EXECUTA O
-//*            PROGRAMA HLASM COPYFB, QUE COPIA O ARQUIVO DO DDNAME
-//*            ENTRADA (RECFM=FB,LRECL=80) PARA O DDNAME SAIDA.
+//* FUNCTION.: ASSEMBLES (ASMA90), LINK-EDITS (IEWL) AND RUNS THE
+//*            HLASM PROGRAM COPYFB, WHICH COPIES THE DATA SET ON
+//*            DDNAME INFILE (RECFM=FB,LRECL=80) TO DDNAME OUTFILE.
 //*
-//* AJUSTAR..: - O SIMBOLO HLQ COM O SEU PREFIXO DE DATASETS;
-//*            - O CARTAO JOB (CONTA, CLASSES) CONFORME A INSTALACAO.
+//* CUSTOMIZE: - THE HLQ SYMBOL WITH YOUR DATA SET PREFIX;
+//*            - THE JOB CARD (ACCOUNT, CLASSES) FOR YOUR SITE.
 //*
-//* PRE-REQ..: &HLQ..ASM         PDS FB/80 COM O MEMBRO COPYFB
-//*            &HLQ..LOAD        PDS/PDSE RECFM=U (BIBLIOTECA LOAD)
+//* PREREQS..: &HLQ..ASM         FB/80 PDS WITH MEMBER COPYFB
+//*            &HLQ..LOAD        PDS/PDSE RECFM=U (LOAD LIBRARY)
 //*====================================================================
 //         SET HLQ=USERID
 //*
 //*--------------------------------------------------------------------
-//* STEP 1 - EXCLUI O ARQUIVO DE ENTRADA E SAIDA DE EXECUCAO ANTERIOR
-//*           (DISP=MOD,DELETE NAO FALHA SE O DATASET NAO EXISTIR)
+//* STEP 1 - DELETE THE INPUT AND OUTPUT DATA SETS FROM A PREVIOUS RUN
+//*          (DISP=MOD,DELETE DOES NOT FAIL IF THE DATA SET IS MISSING)
 //*--------------------------------------------------------------------
 //STEP1    EXEC PGM=IEFBR14
-//DD1      DD DSN=&HLQ..ARQ.ENTRADA,DISP=(MOD,DELETE,DELETE),
+//DD1      DD DSN=&HLQ..DATA.INPUT,DISP=(MOD,DELETE,DELETE),
 //         UNIT=SYSALLDA,SPACE=(TRK,(0))
-//DD2      DD DSN=&HLQ..ARQ.SAIDA,DISP=(MOD,DELETE,DELETE),
+//DD2      DD DSN=&HLQ..DATA.OUTPUT,DISP=(MOD,DELETE,DELETE),
 //         UNIT=SYSALLDA,SPACE=(TRK,(0))
 //*
 //*--------------------------------------------------------------------
-//* STEP2 2 - ALLOCA O ARQUIVO DE ENTRADA
+//* STEP 2 - ALLOCATE THE INPUT DATA SET
 //*--------------------------------------------------------------------
 //STEP2    EXEC PGM=IEFBR14
-//DD3      DD DSN=&HLQ..ARQ.ENTRADA,
+//DD3      DD DSN=&HLQ..DATA.INPUT,
 //         DISP=(NEW,CATLG,DELETE),
 //         UNIT=SYSALLDA,SPACE=(TRK,(15,15),RLSE),
 //         DCB=(RECFM=FB,LRECL=80,BLKSIZE=0)
 //*
 //*--------------------------------------------------------------------
-//* STEP3 3 - INSERI REGISTRO DATASET ENTRADA
+//* STEP 3 - WRITE TEST RECORDS TO THE INPUT DATA SET
 //*--------------------------------------------------------------------
 //STEP3    EXEC PGM=IEBGENER
 //SYSPRINT DD SYSOUT=*
@@ -42,12 +42,12 @@
 //SYSUT1   DD *
 LINE01 WORD11 WORD12
 LINE02 WORD21 WORD22
-//SYSUT2   DD DISP=SHR,DSN=&HLQ..ARQ.ENTRADA
+//SYSUT2   DD DISP=SHR,DSN=&HLQ..DATA.INPUT
 //*--------------------------------------------------------------------
-//* STEP 4 - MONTAGEM (ASSEMBLY) COM O HIGH LEVEL ASSEMBLER
-//*           SYSLIB : BIBLIOTECAS DE MACROS (DCB, OPEN, GET, DCBD..)
-//*           SYSIN  : FONTE DO PROGRAMA
-//*           SYSLIN : MODULO OBJETO GERADO (TEMPORARIO &&OBJ)
+//* STEP 4 - ASSEMBLY WITH THE HIGH LEVEL ASSEMBLER
+//*          SYSLIB : MACRO LIBRARIES (DCB, OPEN, GET, DCBD, ...)
+//*          SYSIN  : PROGRAM SOURCE
+//*          SYSLIN : GENERATED OBJECT MODULE (TEMPORARY &&OBJ)
 //*--------------------------------------------------------------------
 //ASM      EXEC PGM=ASMA90,PARM='OBJECT,NODECK,XREF(SHORT)'
 //SYSLIB   DD DSN=SYS1.MACLIB,DISP=SHR
@@ -60,8 +60,8 @@ LINE02 WORD21 WORD22
 //SYSIN    DD DSN=&HLQ..ASM(COPYFB),DISP=SHR
 //*
 //*--------------------------------------------------------------------
-//* STEP 5 - LINKEDICAO (BINDER). SO EXECUTA SE O ASM TERMINOU COM
-//*           RC <= 4. GERA O MEMBRO COPYFB NA BIBLIOTECA LOAD.
+//* STEP 5 - LINK-EDIT (BINDER). RUNS ONLY IF THE ASSEMBLY ENDED
+//*          WITH RC <= 4. CREATES MEMBER COPYFB IN THE LOAD LIBRARY.
 //*--------------------------------------------------------------------
 //LKED     EXEC PGM=IEWL,PARM='LIST,MAP,XREF',COND=(4,LT,ASM)
 //SYSPRINT DD SYSOUT=*
@@ -70,17 +70,17 @@ LINE02 WORD21 WORD22
 //SYSLMOD  DD DSN=&HLQ..LOAD(COPYFB),DISP=SHR
 //*
 //*--------------------------------------------------------------------
-//* STEP 6 - EXECUCAO DO PROGRAMA COPYFB. SO EXECUTA SE ASM E LKED
-//*           TERMINARAM COM RC <= 4.
-//*           ENTRADA: ARQUIVO LIDO   (RECFM=FB,LRECL=80)
-//*           SAIDA  : ARQUIVO GERADO COM A MESMA DCB DA ENTRADA
-//*                    (BLKSIZE=0 -> BLOCAGEM OTIMA CALCULADA PELO
-//*                    SISTEMA, 27920 EM DISCO 3390)
+//* STEP 6 - RUN PROGRAM COPYFB. RUNS ONLY IF ASM AND LKED ENDED
+//*          WITH RC <= 4.
+//*          INFILE : DATA SET READ     (RECFM=FB,LRECL=80)
+//*          OUTFILE: DATA SET CREATED WITH THE SAME DCB AS THE INPUT
+//*                   (BLKSIZE=0 -> OPTIMAL BLOCK SIZE CALCULATED BY
+//*                   THE SYSTEM, 27920 ON A 3390 DISK)
 //*--------------------------------------------------------------------
 //STEP6       EXEC PGM=COPYFB,COND=((4,LT,ASM),(4,LT,LKED))
 //STEPLIB  DD DSN=&HLQ..LOAD,DISP=SHR
-//ENTRADA  DD DSN=&HLQ..ARQ.ENTRADA,DISP=SHR
-//SAIDA    DD DSN=&HLQ..ARQ.SAIDA,
+//INFILE   DD DSN=&HLQ..DATA.INPUT,DISP=SHR
+//OUTFILE  DD DSN=&HLQ..DATA.OUTPUT,
 //         DISP=(NEW,CATLG,DELETE),
 //         UNIT=SYSALLDA,SPACE=(TRK,(15,15),RLSE),
 //         DCB=(RECFM=FB,LRECL=80,BLKSIZE=0)
